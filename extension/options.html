@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Windows Spotlight Sync</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <h1>Windows Spotlight Sync</h1>
+
+  <section class="card">
+    <h2>Status</h2>
+    <p id="status" class="status">Checking native helper&hellip;</p>
+    <button id="btn-test">Test native helper</button>
+    <button id="btn-refresh">Refresh wallpaper now</button>
+  </section>
+
+  <section class="card">
+    <h2>Setup</h2>
+    <ol>
+      <li>Extract this project somewhere permanent, e.g. <code>C:\Tools\FirefoxSpotlightSync</code>.</li>
+      <li>Open PowerShell in that folder and run:
+        <pre>Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\install.ps1</pre>
+      </li>
+      <li>Fully close and reopen Firefox.</li>
+      <li>Load the extension: <code>about:debugging#/runtime/this-firefox</code> &rarr;
+        <em>Load Temporary Add-on</em> &rarr; <code>extension\manifest.json</code>
+        (or install the built <code>.xpi</code> &mdash; see the README for a
+        permanent install).</li>
+    </ol>
+    <p>The installer writes the native-messaging manifest with an absolute path
+    to <code>spotlight_host.cmd</code>, so it works from any folder.</p>
+  </section>
+
+  <section class="card">
+    <h2>History</h2>
+    <label class="row">Keep last
+      <select id="o-historymax">
+        <option value="0">Off</option>
+        <option value="5">5</option>
+        <option value="10">10</option>
+        <option value="20">20</option>
+        <option value="50">50</option>
+      </select>
+      wallpapers
+    </label>
+    <button id="btn-clear-history">Clear history</button>
+    <p id="history-msg" class="hint"></p>
+  </section>
+
+  <section class="card">
+    <h2>Troubleshooting</h2>
+    <p>Run <code>.\scripts\diagnose.ps1</code> from PowerShell. It verifies the
+    helper files, the generated manifest and its path, the Firefox registry
+    entry, and performs a live round-trip request to the helper.</p>
+    <button id="btn-reset">Reset all settings</button>
+  </section>
+
+  <p class="hint">All wallpaper handling is local. No network service is used.</p>
+
+  <script src="options.js"></script>
+</body>
+</html>

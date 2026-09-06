@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>New Tab</title>
+  <link rel="stylesheet" href="newtab.css">
+</head>
+<body>
+  <div id="bg-a" class="bg"></div>
+  <div id="bg-b" class="bg"></div>
+  <div id="shade"></div>
+
+  <main>
+    <div class="clock" id="clock" hidden></div>
+    <div class="date" id="date" hidden></div>
+
+    <form id="search" hidden>
+      <input id="q" type="search" placeholder="Search the web" autocomplete="off" spellcheck="false">
+    </form>
+
+    <div class="meta" id="meta" hidden></div>
+  </main>
+
+  <div class="status" id="status" hidden></div>
+
+  <div class="toolbar">
+    <button id="btn-live" class="chip" hidden title="Return to the live wallpaper">Back to live</button>
+    <button id="btn-history" class="icon-btn" title="Wallpaper history">&#128337;</button>
+    <button id="btn-settings" class="icon-btn" title="Settings">&#9881;</button>
+  </div>
+
+  <section id="panel" class="panel" hidden>
+    <header>
+      <span id="panel-title">Settings</span>
+      <button id="panel-close" class="icon-btn" title="Close">&times;</button>
+    </header>
+
+    <div id="settings-view" class="panel-body">
+      <label class="row"><input type="checkbox" id="s-clock"> Show clock</label>
+      <label class="row"><input type="checkbox" id="s-clock-seconds"> Show seconds</label>
+      <label class="row"><input type="checkbox" id="s-hour24"> 24-hour clock</label>
+      <label class="row"><input type="checkbox" id="s-search"> Show search box</label>
+      <label class="row">Search engine
+        <select id="s-engine">
+          <option value="google">Google</option>
+          <option value="bing">Bing</option>
+          <option value="duckduckgo">DuckDuckGo</option>
+        </select>
+      </label>
+      <label class="row">Darkening <input type="range" id="s-darkness" min="0" max="0.75" step="0.01"></label>
+      <label class="row">Blur <input type="range" id="s-blur" min="0" max="24" step="1"></label>
+      <label class="row"><input type="checkbox" id="s-showmeta"> Show wallpaper caption</label>
+
+      <hr>
+      <label class="row">Keep history
+        <select id="s-historymax">
+          <option value="0">Off</option>
+          <option value="5">5</option>
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+      </label>
+      <label class="row">Check every
+        <select id="s-pollseconds">
+          <option value="10">10s</option>
+          <option value="15">15s</option>
+          <option value="30">30s</option>
+          <option value="60">60s</option>
+          <option value="300">5m</option>
+        </select>
+      </label>
+      <label class="row">Image size
+        <select id="s-maxdimension">
+          <option value="1280">1280</option>
+          <option value="1600">1600</option>
+          <option value="1920">1920</option>
+          <option value="2560">2560</option>
+        </select>
+      </label>
+      <p class="hint" id="source-hint"></p>
+    </div>
+
+    <div id="history-view" class="panel-body" hidden>
+      <div id="history-grid" class="history-grid"></div>
+      <p class="hint" id="history-hint">Loading history&hellip;</p>
+    </div>
+  </section>
+
+  <script src="newtab.js"></script>
+</body>
+</html>

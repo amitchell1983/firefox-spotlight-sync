@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Windows Spotlight Sync">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b6fd6"/>
+      <stop offset="1" stop-color="#8ec7ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="20" fill="url(#sky)"/>
+  <circle cx="66" cy="30" r="12" fill="#ffe08a"/>
+  <path d="M8 78 L34 44 L52 66 L64 52 L88 78 Z" fill="#1f3a63" opacity="0.9"/>
+  <path d="M8 78 L34 44 L52 66 L64 52 L88 78 Z" fill="none"/>
+</svg>

@@ -1,0 +1,9 @@
+{
+  "name": "windows_spotlight_sync",
+  "description": "Provides the current Windows Spotlight desktop wallpaper to Firefox.",
+  "path": "__REPLACED_BY_INSTALLER__",
+  "type": "stdio",
+  "allowed_extensions": [
+    "windows-spotlight-sync@example.local"
+  ]
+}

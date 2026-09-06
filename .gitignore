@@ -1,0 +1,21 @@
+# Build output
+dist/
+*.xpi
+web-ext-artifacts/
+
+# Native host build leftovers (from the old PyInstaller flow, kept out just in case)
+native-host/build/
+native-host/*.exe
+native-host/*.spec
+
+# Generated at install time — never commit (contains machine-specific absolute paths)
+native-host/windows_spotlight_sync.json
+
+# Python leftovers
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
