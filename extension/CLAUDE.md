@@ -7,7 +7,7 @@ No bundler, no npm. Use the `browser.*` promise API.
 
 | File | Role |
 |------|------|
-| `manifest.json` | MV2. `persistent: true` background (we hold a long-lived native port). `chrome_url_overrides.newtab`. `permissions: nativeMessaging, storage, topSites`. |
+| `manifest.json` | MV2. `persistent: true` background (we hold a long-lived native port). `chrome_url_overrides.newtab` **and** `chrome_settings_overrides.homepage` both point at `newtab.html`, so it serves New Tab, homepage, and new windows. `permissions: nativeMessaging, storage, topSites`. |
 | `background.js` | Owns the single `connectNative("windows_spotlight_sync")` port. Caches the current image into `storage.local`, retries the port with exponential backoff (3s→60s), and proxies page requests to the helper with `id` correlation. |
 | `newtab.html/.css/.js` | Renders from `storage.local`; two `.bg` layers for crossfade; settings + history panel; clock; search. Never calls `connectNative` itself. |
 | `options.html/.css/.js` | Setup instructions, live "Test native helper", history size + clear, reset settings. |

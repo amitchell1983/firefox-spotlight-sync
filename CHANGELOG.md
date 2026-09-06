@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Added
+- The Spotlight page is now also the **homepage / new-window page**, not just
+  the New Tab page (`chrome_settings_overrides.homepage`). Firefox asks once to
+  confirm the homepage change; it can be reverted from
+  `about:preferences#home` or by removing the extension.
 - Custom (user-added) shortcuts now get a real favicon: the **Add** form shows
   a live icon preview as you type the URL, and each custom tile resolves its
   icon from a matching Top Sites favicon when possible, otherwise the site's

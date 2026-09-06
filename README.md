@@ -1,8 +1,8 @@
 # Windows Spotlight Sync for Firefox
 
-Replaces the Firefox **New Tab** background with the current **Windows
-Spotlight** desktop wallpaper, and keeps it in sync automatically as Windows
-rotates it.
+Replaces the Firefox **New Tab**, **homepage**, and **new-window** page with the
+current **Windows Spotlight** desktop wallpaper, and keeps it in sync
+automatically as Windows rotates it.
 
 - **No Python / no dependencies** — the helper is a single PowerShell script
   using components already on Windows.
@@ -10,8 +10,10 @@ rotates it.
   to the helper, which watches for wallpaper changes and pushes them.
 - **Efficient** — the full image crosses native messaging only when it changes;
   opening a New Tab reads a local cache.
+- **New Tab, homepage, and new windows** — the same Spotlight page is used for
+  all three.
 - **History, metadata, and Firefox-style controls** — clock, search, darkening,
-  blur, caption, and a history strip, all in a settings panel.
+  blur, caption, shortcuts, and a history strip, all in a settings panel.
 - **100% local** — no web service, no telemetry.
 
 ## Requirements
@@ -37,7 +39,10 @@ rotates it.
      `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** →
      select `extension\manifest.json`.
    - **Permanent**: see *Permanent installation* below.
-5. Open a new tab.
+5. Firefox asks once to confirm the homepage / new-window change — choose
+   **Keep Changes**. (Revert any time from `about:preferences#home` or by
+   removing the extension.)
+6. Open a new tab, or a new window.
 
 ## Permanent installation
 

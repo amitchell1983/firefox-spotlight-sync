@@ -1,14 +1,15 @@
 # CLAUDE.md — Windows Spotlight Sync
 
-Firefox New Tab background that mirrors the current **Windows Spotlight**
-desktop wallpaper and updates automatically when Windows rotates it.
+Firefox New Tab / homepage / new-window background that mirrors the current
+**Windows Spotlight** desktop wallpaper and updates automatically when Windows
+rotates it.
 
 ## Components
 
 | Part | Path | Language | Role |
 |------|------|----------|------|
 | Native helper | `native-host/spotlight_host.ps1` (+ `.cmd` launcher) | Windows PowerShell 5.1 | Finds the current Spotlight image, resizes it, watches for changes, keeps history, extracts metadata. **No third-party dependencies** (uses .NET Framework `System.Drawing`). |
-| Extension | `extension/` | WebExtension MV2 | Persistent background page holds one `connectNative` port; New Tab page renders from `storage.local`. |
+| Extension | `extension/` | WebExtension MV2 | Persistent background page holds one `connectNative` port; `newtab.html` renders from `storage.local` and backs New Tab (`chrome_url_overrides`), homepage + new windows (`chrome_settings_overrides.homepage`). |
 | Scripts | `scripts/` | PowerShell | `install.ps1`, `uninstall.ps1`, `diagnose.ps1`, `build-xpi.ps1`. |
 
 ## Native messaging protocol (extension ⇄ helper)
