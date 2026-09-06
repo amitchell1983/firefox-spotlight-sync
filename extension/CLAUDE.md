@@ -21,13 +21,18 @@ current  = { status: "ok"|"disconnected"|"unavailable",
 settings = { clock, clockSeconds, hour24, search, engine,
              darkness, blur, showMeta, shortcuts, shortcutRows,
              historyMax, pollSeconds, maxDimension, jpegQuality }   // last 4 forwarded to the helper via set_config
-shortcuts = { custom: [{ title, url }], blocked: [url, ...] }       // overlay on browser.topSites.get()
+shortcuts = { custom: [{ title, url }], blocked: [url, ...],
+              pinned: { "<url>": <slotIndex> } }                    // overlay on browser.topSites.get()
 ```
 
-Shortcuts grid = user `custom` tiles first, then `browser.topSites.get({includeFavicon:true})`
-minus `blocked`, sliced to `shortcutRows * 10` (grid is fixed at 10 tiles wide;
-`shortcutRows` is 1-4, default 3), plus an "Add" tile. Favicons come from the
-topSites API (Firefox's cache) — the page makes no network requests.
+Shortcuts grid: candidates = `custom` tiles then
+`browser.topSites.get({includeFavicon:true})` minus `blocked`. `computeSlots()`
+places `pinned` urls at their slot index (bumping to the next free slot on a
+collision), then fills the rest left-to-right; rendered through the last filled
+slot (gaps are drop targets). Grid is fixed 10 wide; `shortcutRows` 1-4
+(default 3). Tiles are `draggable` — drop on a tile/empty slot pins the dragged
+url there; the 📌 button pins/unpins in place. Favicons come from the topSites
+API (Firefox's cache) — the page makes no network requests.
 
 `newtab.js` merges `settings` over `DEFAULTS`; `background.js` forwards the
 four host keys to the helper via `set_config` whenever `settings` changes.

@@ -165,6 +165,8 @@ let lastRenderedMeta = null;
 // -------------------------------------------------------------------------
 // Shortcuts (Firefox Top Sites + user-added tiles)
 // -------------------------------------------------------------------------
+let dragUrl = null; // url of the tile currently being dragged
+
 function hostOf(url) {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
@@ -188,17 +190,60 @@ function tileFace(site) {
   return face;
 }
 
-function makeTile(site, data) {
+async function pinAt(data, url, idx) {
+  data.pinned = { ...(data.pinned || {}) };
+  data.pinned[url] = idx;
+  await browser.storage.local.set({ shortcuts: data });
+  renderShortcuts();
+}
+
+async function unpin(data, url) {
+  data.pinned = { ...(data.pinned || {}) };
+  delete data.pinned[url];
+  await browser.storage.local.set({ shortcuts: data });
+  renderShortcuts();
+}
+
+function wireDropTarget(el, data, idx) {
+  el.addEventListener("dragover", (e) => {
+    if (!dragUrl) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    el.classList.add("drop-target");
+  });
+  el.addEventListener("dragleave", () => el.classList.remove("drop-target"));
+  el.addEventListener("drop", (e) => {
+    e.preventDefault();
+    el.classList.remove("drop-target");
+    if (dragUrl) pinAt(data, dragUrl, idx);
+  });
+}
+
+function makeTile(site, data, idx) {
   const a = document.createElement("a");
-  a.className = "tile";
+  a.className = "tile" + (site.pinned ? " pinned" : "");
   a.href = site.url;
   a.title = site.url;
+  a.draggable = true;
   a.appendChild(tileFace(site));
 
   const label = document.createElement("span");
   label.className = "label";
   label.textContent = site.title || hostOf(site.url);
   a.appendChild(label);
+
+  const pin = document.createElement("button");
+  pin.className = "pin";
+  pin.type = "button";
+  pin.textContent = "\u{1F4CC}";
+  pin.title = site.pinned ? "Unpin" : "Pin here";
+  pin.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (site.pinned) unpin(data, site.url);
+    else pinAt(data, site.url, idx);
+  });
+  a.appendChild(pin);
 
   const rm = document.createElement("button");
   rm.className = "remove";
@@ -213,11 +258,67 @@ function makeTile(site, data) {
     } else {
       data.blocked = [...(data.blocked || []), site.url];
     }
+    if (data.pinned) {
+      data.pinned = { ...data.pinned };
+      delete data.pinned[site.url];
+    }
     await browser.storage.local.set({ shortcuts: data });
     renderShortcuts();
   });
   a.appendChild(rm);
+
+  a.addEventListener("dragstart", (e) => {
+    dragUrl = site.url;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", site.url);
+    a.classList.add("dragging");
+  });
+  a.addEventListener("dragend", () => {
+    dragUrl = null;
+    a.classList.remove("dragging");
+  });
+  wireDropTarget(a, data, idx);
   return a;
+}
+
+function makeEmptySlot(data, idx) {
+  const d = document.createElement("div");
+  d.className = "tile empty";
+  const face = document.createElement("span");
+  face.className = "face";
+  d.appendChild(face);
+  wireDropTarget(d, data, idx);
+  return d;
+}
+
+// Place pinned shortcuts at their slots, then fill the rest left-to-right.
+function computeSlots(candidates, pinned, limit) {
+  const slots = new Array(limit).fill(null);
+  const byUrl = new Map(candidates.map((c) => [c.url, c]));
+  const placed = new Set();
+
+  Object.keys(pinned || {})
+    .map((url) => [url, Number(pinned[url])])
+    .filter(([url, i]) => byUrl.has(url) && i >= 0 && i < limit)
+    .sort((a, b) => a[1] - b[1])
+    .forEach(([url, i]) => {
+      let slot = i;
+      while (slot < limit && slots[slot]) slot++;
+      if (slot < limit) {
+        slots[slot] = { ...byUrl.get(url), pinned: true };
+        placed.add(url);
+      }
+    });
+
+  let cursor = 0;
+  for (const c of candidates) {
+    if (placed.has(c.url)) continue;
+    while (cursor < limit && slots[cursor]) cursor++;
+    if (cursor >= limit) break;
+    slots[cursor] = { ...c, pinned: false };
+    placed.add(c.url);
+  }
+  return slots;
 }
 
 function makeAddTile(data) {
@@ -283,7 +384,7 @@ async function renderShortcuts() {
   }
 
   const store = await browser.storage.local.get("shortcuts");
-  const data = store.shortcuts || { custom: [], blocked: [] };
+  const data = store.shortcuts || { custom: [], blocked: [], pinned: {} };
 
   let top = [];
   try {
@@ -296,14 +397,22 @@ async function renderShortcuts() {
   const customUrls = new Set((data.custom || []).map((c) => c.url));
   const rows = Math.min(4, Math.max(1, settings.shortcutRows || 3));
   const limit = rows * 10; // grid is 10 tiles wide
-  const merged = [
+  const candidates = [
     ...(data.custom || []).map((c) => ({ ...c, custom: true })),
     ...top.filter((s) => !blocked.has(s.url) && !customUrls.has(s.url)),
-  ].slice(0, limit);
+  ];
+
+  const slots = computeSlots(candidates, data.pinned || {}, limit);
+  let lastFilled = -1;
+  slots.forEach((s, i) => { if (s) lastFilled = i; });
 
   box.innerHTML = "";
   box.hidden = false;
-  for (const site of merged) box.appendChild(makeTile(site, data));
+  // Render through the last filled slot (gaps stay as drop targets); trailing
+  // empty slots are omitted so the grid isn't a field of dashed boxes.
+  for (let i = 0; i <= lastFilled; i++) {
+    box.appendChild(slots[i] ? makeTile(slots[i], data, i) : makeEmptySlot(data, i));
+  }
   box.appendChild(makeAddTile(data));
 }
 
