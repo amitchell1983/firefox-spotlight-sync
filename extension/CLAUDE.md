@@ -21,10 +21,16 @@ current  = { status: "ok"|"disconnected"|"unavailable",
 settings = { clock, clockSeconds, hour24, search, engine,
              darkness, blur, showMeta, shortcuts, shortcutRows,
              historyMax, pollSeconds, maxDimension, jpegQuality }   // last 4 forwarded to the helper via set_config
-shortcuts = { custom: [{ title, url }], blocked: [url, ...],
+shortcuts = { custom: [{ title, url, icon? }], blocked: [url, ...],
               pinned: { "<url>": <slotIndex> },   // locked tiles, set only by the 📌 button
               order:  [url, ...] }                // drag arrangement of the UNPINNED tiles
 ```
+
+Tile icons: Top Sites entries carry `favicon` from the API. Custom tiles get
+`icon` — `iconForCustom()` reuses a Top Sites favicon for the same host, else
+`https://<host>/favicon.ico`; `renderShortcuts()` backfills and persists it
+once, and `tileFace()` falls back to a letter on `<img>` error. The Add form
+previews the icon live as the URL is typed.
 
 Shortcuts grid: candidates = `custom` tiles then
 `browser.topSites.get({includeFavicon:true})` minus `blocked`. `computeSlots()`

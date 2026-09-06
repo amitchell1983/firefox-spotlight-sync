@@ -176,19 +176,46 @@ function hostOf(url) {
   }
 }
 
+function letterFor(site) {
+  const h = hostOf(site.url || "");
+  return (h[0] || (site.title || "?")[0] || "?").toUpperCase();
+}
+
 function tileFace(site) {
   const face = document.createElement("span");
   face.className = "face";
-  if (site.favicon) {
+  const src = site.favicon || site.icon;
+  if (src) {
     const img = document.createElement("img");
-    img.src = site.favicon;
     img.alt = "";
+    img.addEventListener("error", () => {
+      img.remove();
+      face.textContent = letterFor(site);
+    });
+    img.src = src;
     face.appendChild(img);
   } else {
-    const h = hostOf(site.url);
-    face.textContent = (h[0] || (site.title || "?")[0] || "?").toUpperCase();
+    face.textContent = letterFor(site);
   }
   return face;
+}
+
+// Best icon for a user-added shortcut, resolved without extra API surface:
+// reuse a Top Sites favicon for the same host if we have one, otherwise point
+// at the site's own /favicon.ico (falls back to a letter tile if it 404s).
+function iconForCustom(url, topByHost) {
+  let host = "";
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return null;
+  }
+  if (topByHost && topByHost.get(host)) return topByHost.get(host);
+  try {
+    return new URL("/favicon.ico", url).href;
+  } catch {
+    return null;
+  }
 }
 
 async function saveShortcuts(data) {
@@ -382,11 +409,27 @@ function makeAddTile(data) {
   return btn;
 }
 
+function normalizeUrl(v) {
+  let u = (v || "").trim();
+  if (!u) return "";
+  if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+  try {
+    return new URL(u).href;
+  } catch {
+    return "";
+  }
+}
+
 function showAddForm(data) {
   const box = els.shortcuts;
   if (box.querySelector(".shortcut-form")) return;
   const form = document.createElement("form");
   form.className = "shortcut-form";
+
+  const preview = document.createElement("span");
+  preview.className = "face preview";
+  preview.textContent = "+";
+  let previewIcon = null;
 
   const name = document.createElement("input");
   name.className = "name";
@@ -404,13 +447,41 @@ function showAddForm(data) {
   save.className = "chip";
   save.textContent = "Save";
 
-  form.append(name, url, save);
+  let debounce;
+  const updatePreview = () => {
+    const u = normalizeUrl(url.value);
+    previewIcon = null;
+    preview.textContent = "";
+    if (!u) {
+      preview.textContent = "+";
+      return;
+    }
+    const src = iconForCustom(u, null); // site's own /favicon.ico
+    const img = document.createElement("img");
+    img.alt = "";
+    img.addEventListener("load", () => {
+      previewIcon = src;
+    });
+    img.addEventListener("error", () => {
+      img.remove();
+      preview.textContent = (hostOf(u)[0] || "?").toUpperCase();
+    });
+    img.src = src;
+    preview.appendChild(img);
+  };
+  url.addEventListener("input", () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(updatePreview, 400);
+  });
+
+  form.append(preview, name, url, save);
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    let u = url.value.trim();
+    const u = normalizeUrl(url.value);
     if (!u) return;
-    if (!/^https?:\/\//i.test(u)) u = "https://" + u;
-    data.custom = [...(data.custom || []), { title: name.value.trim() || hostOf(u), url: u }];
+    const entry = { title: name.value.trim() || hostOf(u), url: u };
+    if (previewIcon) entry.icon = previewIcon; // else renderShortcuts() backfills
+    data.custom = [...(data.custom || []), entry];
     await browser.storage.local.set({ shortcuts: data });
     renderShortcuts();
   });
@@ -438,12 +509,35 @@ async function renderShortcuts() {
     top = [];
   }
 
+  const topByHost = new Map();
+  for (const s of top) {
+    try {
+      if (s.favicon) topByHost.set(new URL(s.url).hostname, s.favicon);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  // Give every custom shortcut an icon (Top Sites favicon for the same host,
+  // else the site's /favicon.ico). Persist the backfill so it's resolved once;
+  // the `icon` key is always written (even null) so this runs at most once.
+  let iconsChanged = false;
+  const custom = (data.custom || []).map((c) => {
+    if ("icon" in c || c.favicon) return c;
+    iconsChanged = true;
+    return { ...c, icon: iconForCustom(c.url, topByHost) };
+  });
+  if (iconsChanged) {
+    data.custom = custom;
+    browser.storage.local.set({ shortcuts: data }).catch(() => {});
+  }
+
   const blocked = new Set(data.blocked || []);
-  const customUrls = new Set((data.custom || []).map((c) => c.url));
+  const customUrls = new Set(custom.map((c) => c.url));
   const rows = Math.min(4, Math.max(1, settings.shortcutRows || 3));
   const limit = rows * 10; // grid is 10 tiles wide
   const candidates = [
-    ...(data.custom || []).map((c) => ({ ...c, custom: true })),
+    ...custom.map((c) => ({ ...c, custom: true })),
     ...top.filter((s) => !blocked.has(s.url) && !customUrls.has(s.url)),
   ];
 

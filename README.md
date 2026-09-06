@@ -67,7 +67,8 @@ Open the **⚙** button on the New Tab page (or the extension's options page):
 - **Shortcuts** — your Firefox Top Sites plus tiles you add yourself (hover a
   tile to remove it; the **+** tile adds one). 10 wide; 1-4 rows in settings.
   Drag an unpinned tile to reorder it; use 📌 to lock a tile in place (a pinned
-  tile can't be moved or removed until you unpin it).
+  tile can't be moved or removed until you unpin it). Added shortcuts pick up
+  the site's favicon automatically.
 - Darkening and blur of the background
 - Wallpaper caption (title / location / copyright, when Windows provides it)
 - History size, check interval, and image resolution (these are applied by the
@@ -112,10 +113,11 @@ and internals.
 
 ## Privacy
 
-Everything runs on your machine. The extension has no host permissions and
-makes no network requests; the shortcuts grid reads Firefox's own Top Sites
-via the `topSites` API, and the helper only reads local image files and the
-wallpaper registry value.
+Everything runs on your machine. The extension has no host permissions; the
+shortcuts grid reads Firefox's own Top Sites via the `topSites` API, and the
+helper only reads local image files and the wallpaper registry value. The only
+outbound request the page can make is loading `/favicon.ico` from a site you
+added yourself as a custom shortcut (when its icon isn't already in Top Sites).
 
 ## License
 
