@@ -60,9 +60,11 @@ allows unsigned extensions:
   This writes `distribution\policies.json` in the Firefox program folder with an
   `ExtensionSettings` entry pointing at the built `.xpi`. Signature rules still
   apply on release Firefox.
-- **Signed** — submit `extension/` to
+- **Signed** — submit the built `.xpi` to
   [addons.mozilla.org](https://addons.mozilla.org/developers/) for signing and
-  install the signed `.xpi`.
+  install the signed `.xpi`. Step-by-step listing/signing instructions,
+  ready-to-paste store copy, privacy policy, and reviewer notes are in
+  [`AMO-SUBMISSION.md`](AMO-SUBMISSION.md).
 
 ## Settings
 

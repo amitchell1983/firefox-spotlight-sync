@@ -33,8 +33,8 @@ foreach ($p in @(
     if ($p -and (Test-Path $p)) {
         try {
             $j = Get-Content $p -Raw | ConvertFrom-Json
-            if ($j.policies.ExtensionSettings.'windows-spotlight-sync@example.local') {
-                $j.policies.ExtensionSettings.PSObject.Properties.Remove('windows-spotlight-sync@example.local')
+            if ($j.policies.ExtensionSettings.'spotlight-sync@amitchell1983.github.io') {
+                $j.policies.ExtensionSettings.PSObject.Properties.Remove('spotlight-sync@amitchell1983.github.io')
                 ($j | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath $p -Encoding UTF8
                 Write-Host "Updated policy: $p"
             }

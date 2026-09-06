@@ -1,12 +1,15 @@
 {
   "manifest_version": 2,
   "name": "Windows Spotlight Sync",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Uses the current Windows Spotlight desktop wallpaper as the Firefox New Tab, homepage, and new-window background, updating automatically when Windows rotates it.",
   "browser_specific_settings": {
     "gecko": {
-      "id": "windows-spotlight-sync@example.local",
-      "strict_min_version": "115.0"
+      "id": "spotlight-sync@amitchell1983.github.io",
+      "strict_min_version": "115.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   },
   "permissions": [
@@ -16,7 +19,8 @@
   ],
   "icons": {
     "48": "icons/icon.svg",
-    "96": "icons/icon.svg"
+    "96": "icons/icon.svg",
+    "128": "icons/icon.svg"
   },
   "chrome_url_overrides": {
     "newtab": "newtab.html"

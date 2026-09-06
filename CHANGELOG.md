@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.2 — 2026-09-05
+
+### Changed
+- Prepared for AMO (addons.mozilla.org) signing and listing. Manifest declares
+  `browser_specific_settings.gecko.data_collection_permissions` as `["none"]`
+  (nothing is collected or transmitted off the machine); added a 128px icon
+  entry. No behavior change.
+- **Extension id is now `spotlight-sync@amitchell1983.github.io`** (was the
+  placeholder `windows-spotlight-sync@example.local`). Anyone who installed a
+  pre-0.3.2 build must re-run `scripts\install.ps1` and reinstall the extension;
+  settings/shortcuts under the old id do not carry over. The native-messaging
+  manifest template's `allowed_extensions` and the `install.ps1 -Managed`
+  policy key were updated to match.
+- Options page privacy note is now precise: the page's only outbound requests
+  are favicons for shortcuts the user adds.
+
+### Internal
+- New Tab rendering clears containers with `replaceChildren()` instead of
+  `innerHTML = ""` (removes the AMO validator "unsafe innerHTML" warnings).
+
 ## 0.3.1 — 2026-09-05
 
 ### Added

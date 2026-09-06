@@ -147,7 +147,7 @@ function renderMeta(meta) {
     els.meta.hidden = true;
     return;
   }
-  els.meta.innerHTML = "";
+  els.meta.replaceChildren();
   if (title) {
     const t = document.createElement("div");
     t.className = "meta-title";
@@ -631,7 +631,7 @@ async function renderShortcuts() {
   if (!box) return;
   if (!settings.shortcuts) {
     box.hidden = true;
-    box.innerHTML = "";
+    box.replaceChildren();
     return;
   }
 
@@ -682,7 +682,7 @@ async function renderShortcuts() {
   let lastFilled = -1;
   slots.forEach((s, i) => { if (s) lastFilled = i; });
 
-  box.innerHTML = "";
+  box.replaceChildren();
   box.hidden = false;
   // Render through the last filled slot (gaps stay as drop targets); trailing
   // empty slots are omitted so the grid isn't a field of dashed boxes.
@@ -716,7 +716,7 @@ async function openHistory() {
   els.settingsView.hidden = true;
   els.historyView.hidden = false;
   els.panelTitle.textContent = "History";
-  els.historyGrid.innerHTML = "";
+  els.historyGrid.replaceChildren();
   els.historyHint.textContent = "Loading history…";
 
   const res = await browser.runtime.sendMessage({ type: "get_history" });

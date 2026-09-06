@@ -57,8 +57,9 @@ Pin vs. drag are independent:
   tiles and writes `data.order`. It never changes pin state; pinned slots are
   not valid drop targets.
 
-Favicons come from the topSites API (Firefox's cache) — the page makes no
-network requests.
+Top Sites favicons come from the topSites API (Firefox's cache). The page's
+only outbound requests are `<img>` favicons for user-added custom shortcuts
+(`https://<host>/favicon.ico` or a manual icon URL).
 
 `newtab.js` merges `settings` over `DEFAULTS`; `background.js` forwards the
 four host keys to the helper via `set_config` whenever `settings` changes.
@@ -75,4 +76,4 @@ on port failure it falls back to the cached `storage.local.current`.
   `storage.local.current` and subscribe to `storage.onChanged`.
 - Keep MV2 + `persistent: true`; the port must outlive individual tabs.
 - No remote scripts/styles/fonts; everything is local (AMO policy + privacy).
-- Extension id is fixed: `windows-spotlight-sync@example.local`.
+- Extension id is fixed: `spotlight-sync@amitchell1983.github.io`.

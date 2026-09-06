@@ -65,7 +65,7 @@ if ($Managed) {
             $policy = @{
                 policies = @{
                     ExtensionSettings = @{
-                        'windows-spotlight-sync@example.local' = @{
+                        'spotlight-sync@amitchell1983.github.io' = @{
                             installation_mode = 'normal_installed'
                             install_url       = ([Uri]$xpi.FullName).AbsoluteUri
                         }

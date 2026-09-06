@@ -37,10 +37,11 @@ Framing: `[uint32 little-endian length][UTF-8 JSON]`. Requests may carry an
    `%LOCALAPPDATA%\FirefoxSpotlightSync\windows_spotlight_sync.json`; the repo
    only ships `windows_spotlight_sync.template.json`. (The original v0.1.1 bug
    was a hard-coded Linux build path `/mnt/data/...`.)
-3. **Extension id `windows-spotlight-sync@example.local`** must match
+3. **Extension id `spotlight-sync@amitchell1983.github.io`** must match
    `allowed_extensions` in the manifest template.
    Extension permissions: `nativeMessaging`, `storage`, `topSites` (no host
-   permissions; the page makes no network requests).
+   permissions; the only outbound requests are `<img>` favicons for
+   user-added shortcuts).
 4. **Keep host→extension messages under ~1 MB** (Firefox's limit). The image
    payload is bounded to ≤ `MaxBase64` (700 KB base64) by progressively
    lowering quality then dimension — see `Get-BoundedDataUrl`.
