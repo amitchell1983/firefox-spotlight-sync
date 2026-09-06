@@ -15,6 +15,9 @@ native-host/windows_spotlight_sync.json
 __pycache__/
 *.pyc
 
+# Local-only notes
+AMO-SUBMISSION.md
+
 # OS
 .DS_Store
 Thumbs.db
