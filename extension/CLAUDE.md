@@ -19,14 +19,15 @@ No bundler, no npm. Use the `browser.*` promise API.
 current  = { status: "ok"|"disconnected"|"unavailable",
              hash, image /* data URL */, meta, source, path, timestamp, updatedAt, error? }
 settings = { clock, clockSeconds, hour24, search, engine,
-             darkness, blur, showMeta, shortcuts, shortcutsCount,
+             darkness, blur, showMeta, shortcuts, shortcutRows,
              historyMax, pollSeconds, maxDimension, jpegQuality }   // last 4 forwarded to the helper via set_config
 shortcuts = { custom: [{ title, url }], blocked: [url, ...] }       // overlay on browser.topSites.get()
 ```
 
 Shortcuts grid = user `custom` tiles first, then `browser.topSites.get({includeFavicon:true})`
-minus `blocked`, sliced to `shortcutsCount`, plus an "Add" tile. Favicons come
-from the topSites API (Firefox's cache) — the page makes no network requests.
+minus `blocked`, sliced to `shortcutRows * 10` (grid is fixed at 10 tiles wide;
+`shortcutRows` is 1-4, default 3), plus an "Add" tile. Favicons come from the
+topSites API (Firefox's cache) — the page makes no network requests.
 
 `newtab.js` merges `settings` over `DEFAULTS`; `background.js` forwards the
 four host keys to the helper via `set_config` whenever `settings` changes.

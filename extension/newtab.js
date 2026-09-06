@@ -12,7 +12,7 @@ const DEFAULTS = {
   blur: 0,
   showMeta: true,
   shortcuts: true,
-  shortcutsCount: 8,
+  shortcutRows: 3,
   historyMax: 10,
   pollSeconds: 15,
   maxDimension: 1600,
@@ -136,7 +136,7 @@ function bindSettingControls() {
     ["#s-search", "search", "checked"],
     ["#s-showmeta", "showMeta", "checked"],
     ["#s-shortcuts", "shortcuts", "checked"],
-    ["#s-shortcutscount", "shortcutsCount", "number"],
+    ["#s-shortcutrows", "shortcutRows", "number"],
     ["#s-engine", "engine", "value"],
     ["#s-darkness", "darkness", "number"],
     ["#s-blur", "blur", "number"],
@@ -287,17 +287,19 @@ async function renderShortcuts() {
 
   let top = [];
   try {
-    top = await browser.topSites.get({ includeFavicon: true, limit: 24 });
+    top = await browser.topSites.get({ includeFavicon: true, limit: 50 });
   } catch (e) {
     top = [];
   }
 
   const blocked = new Set(data.blocked || []);
   const customUrls = new Set((data.custom || []).map((c) => c.url));
+  const rows = Math.min(4, Math.max(1, settings.shortcutRows || 3));
+  const limit = rows * 10; // grid is 10 tiles wide
   const merged = [
     ...(data.custom || []).map((c) => ({ ...c, custom: true })),
     ...top.filter((s) => !blocked.has(s.url) && !customUrls.has(s.url)),
-  ].slice(0, settings.shortcutsCount);
+  ].slice(0, limit);
 
   box.innerHTML = "";
   box.hidden = false;
