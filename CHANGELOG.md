@@ -1,21 +1,5 @@
 # Changelog
 
-## Unreleased
-
-### Added
-- **Shortcuts grid** on the New Tab page: Firefox Top Sites
-  (`topSites` permission) merged with user-added tiles, each removable; an
-  "Add" tile creates custom shortcuts. Fixed 10 tiles wide; settings *Show
-  shortcuts* and *Shortcut rows* (1-4, default 3 → 10x3). Favicons come from
-  the topSites API — still no network requests from the page.
-- **Reposition & pin shortcuts.** Drag an unpinned tile onto any slot to move
-  it there, shifting the other unpinned tiles (`storage.local.shortcuts.order`).
-  The 📌 button pins/unpins a tile: a **pinned tile is locked** — it can't be
-  dragged, can't be displaced by a drop, its remove (×) is disabled, and its
-  slot is fixed (`storage.local.shortcuts.pinned`, `{ url: slotIndex }`).
-  Dragging never changes pin state. The 📌 icon shows only on hover; the ring
-  around a tile marks it as pinned.
-
 ## 0.2.0 — 2026-09-05
 
 Full rebuild around a dependency-free helper and automatic sync.
@@ -31,6 +15,18 @@ Full rebuild around a dependency-free helper and automatic sync.
 - **Settings panel** on the New Tab page: clock (12/24 h, seconds), search box
   and engine, darkening, blur, caption toggle, plus helper settings (interval,
   history size, image resolution).
+- **Shortcuts grid** on the New Tab page: Firefox Top Sites
+  (`topSites` permission) merged with user-added tiles, each removable; an
+  "Add" tile creates custom shortcuts. Fixed 10 tiles wide; settings *Show
+  shortcuts* and *Shortcut rows* (1-4, default 3 → 10x3). Favicons come from
+  the topSites API — still no network requests from the page.
+- **Reposition & pin shortcuts.** Drag an unpinned tile onto any slot to move
+  it there, shifting the other unpinned tiles (`storage.local.shortcuts.order`).
+  The 📌 button pins/unpins a tile: a **pinned tile is locked** — it can't be
+  dragged, can't be displaced by a drop, its remove (×) is disabled, and its
+  slot is fixed (`storage.local.shortcuts.pinned`, `{ url: slotIndex }`).
+  Dragging never changes pin state. The 📌 icon shows only on hover; the ring
+  around a tile marks it as pinned.
 - **`scripts/install.ps1`** generates the native manifest with an absolute,
   machine-specific path — no manual JSON editing.
 - **`scripts/diagnose.ps1`** now performs a live framed request/response against
