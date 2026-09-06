@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1 — 2026-09-05
 
 ### Added
 - **Manual shortcut icon.** Custom shortcuts have an "Icon URL" field (in the

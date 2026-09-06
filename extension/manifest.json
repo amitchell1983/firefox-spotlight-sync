@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Windows Spotlight Sync",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Uses the current Windows Spotlight desktop wallpaper as the Firefox New Tab, homepage, and new-window background, updating automatically when Windows rotates it.",
   "browser_specific_settings": {
     "gecko": {
