@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 — 2026-09-05
 
 ### Added
 - The Spotlight page is now also the **homepage / new-window page**, not just
