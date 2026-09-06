@@ -22,19 +22,27 @@ settings = { clock, clockSeconds, hour24, search, engine,
              darkness, blur, showMeta, shortcuts, shortcutRows,
              historyMax, pollSeconds, maxDimension, jpegQuality }   // last 4 forwarded to the helper via set_config
 shortcuts = { custom: [{ title, url }], blocked: [url, ...],
-              pinned: { "<url>": <slotIndex> } }                    // overlay on browser.topSites.get()
+              pinned: { "<url>": <slotIndex> },   // locked tiles, set only by the 📌 button
+              order:  [url, ...] }                // drag arrangement of the UNPINNED tiles
 ```
 
 Shortcuts grid: candidates = `custom` tiles then
 `browser.topSites.get({includeFavicon:true})` minus `blocked`. `computeSlots()`
-**locks** each `pinned` url to its exact slot index (never moved; a same-index
-collision is the only exception), then fills the remaining gaps left-to-right;
-rendered through the last filled slot (interior gaps are drop targets). Grid is
-fixed 10 wide; `shortcutRows` 1-4 (default 3). Tiles are `draggable`; dropping
-on a slot pins the dragged url there and, if occupied, swaps — the displaced
-tile takes the dragged tile's old slot (`dropOnSlot`, using `currentSlots`).
-The 📌 button pins/unpins in place. Favicons come from the topSites API
-(Firefox's cache) — the page makes no network requests.
+first **locks** each `pinned` url to its exact slot index, then fills the
+remaining slots with the other candidates ordered by `order` (drag arrangement)
+then natural order. Rendered through the last filled slot; interior gaps are
+drop targets. Grid is fixed 10 wide; `shortcutRows` 1-4 (default 3).
+
+Pin vs. drag are independent:
+- **📌 button** — pin/unpin. A pinned tile is `draggable=false`, its remove (×)
+  is `disabled`, its slot rejects drops, and the 📌 shows only on hover (the
+  `.face` ring is the persistent pinned marker).
+- **drag** — `reorderTo()` moves an unpinned tile among the other unpinned
+  tiles and writes `data.order`. It never changes pin state; pinned slots are
+  not valid drop targets.
+
+Favicons come from the topSites API (Firefox's cache) — the page makes no
+network requests.
 
 `newtab.js` merges `settings` over `DEFAULTS`; `background.js` forwards the
 four host keys to the helper via `set_config` whenever `settings` changes.

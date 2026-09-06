@@ -196,7 +196,7 @@ async function saveShortcuts(data) {
   renderShortcuts();
 }
 
-// Pin `url` to an exact grid slot (locked there until unpinned).
+// Pin `url` — lock it to its current grid slot. Only the pin button calls this.
 async function pinAt(data, url, idx) {
   data.pinned = { ...(data.pinned || {}) };
   data.pinned[url] = idx;
@@ -209,22 +209,38 @@ async function unpin(data, url) {
   await saveShortcuts(data);
 }
 
-// Drop `url` onto slot `idx`. If another tile sits there, swap them so the
-// displaced tile takes the dragged tile's old slot (both end up locked).
-async function dropOnSlot(data, url, idx) {
-  const occupant = currentSlots[idx];
-  const fromIdx = currentSlots.findIndex((s) => s && s.url === url);
-  data.pinned = { ...(data.pinned || {}) };
-  data.pinned[url] = idx;
-  if (occupant && occupant.url !== url && fromIdx >= 0) {
-    data.pinned[occupant.url] = fromIdx;
+// Reorder an unpinned tile to the position of slot `idx`, shifting the other
+// unpinned tiles. Never changes pin state; pinned slots are rejected upstream.
+async function reorderTo(data, url, idx) {
+  let list = currentSlots.filter((s) => s && !s.pinned).map((s) => s.url);
+  const from = list.indexOf(url);
+  if (from < 0) return;
+
+  const target = currentSlots[idx];
+  let to;
+  if (target && !target.pinned && target.url !== url) {
+    const t = list.indexOf(target.url);
+    list.splice(from, 1);
+    const t2 = list.indexOf(target.url);
+    to = from < t ? t2 + 1 : t2; // dragged tile takes the target's visual slot
+  } else {
+    const before = currentSlots
+      .slice(0, idx)
+      .filter((s) => s && !s.pinned && s.url !== url).length;
+    list.splice(from, 1);
+    to = before;
   }
+  to = Math.max(0, Math.min(to, list.length));
+  list.splice(to, 0, url);
+
+  data.order = list;
   await saveShortcuts(data);
 }
 
 function wireDropTarget(el, data, idx) {
+  const locked = () => !!(currentSlots[idx] && currentSlots[idx].pinned);
   el.addEventListener("dragover", (e) => {
-    if (!dragUrl) return;
+    if (!dragUrl || locked()) return; // a pinned slot cannot be a drop target
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     el.classList.add("drop-target");
@@ -233,7 +249,7 @@ function wireDropTarget(el, data, idx) {
   el.addEventListener("drop", (e) => {
     e.preventDefault();
     el.classList.remove("drop-target");
-    if (dragUrl) dropOnSlot(data, dragUrl, idx);
+    if (dragUrl && !locked()) reorderTo(data, dragUrl, idx);
   });
 }
 
@@ -242,7 +258,7 @@ function makeTile(site, data, idx) {
   a.className = "tile" + (site.pinned ? " pinned" : "");
   a.href = site.url;
   a.title = site.url;
-  a.draggable = true;
+  a.draggable = !site.pinned; // pinned tiles are locked in place
   a.appendChild(tileFace(site));
 
   const label = document.createElement("span");
@@ -254,7 +270,7 @@ function makeTile(site, data, idx) {
   pin.className = "pin";
   pin.type = "button";
   pin.textContent = "\u{1F4CC}";
-  pin.title = site.pinned ? "Unpin" : "Pin here";
+  pin.title = site.pinned ? "Unpin" : "Pin in place";
   pin.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -267,34 +283,38 @@ function makeTile(site, data, idx) {
   rm.className = "remove";
   rm.type = "button";
   rm.textContent = "×";
-  rm.title = "Remove";
-  rm.addEventListener("click", async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (site.custom) {
-      data.custom = (data.custom || []).filter((c) => c.url !== site.url);
-    } else {
-      data.blocked = [...(data.blocked || []), site.url];
-    }
-    if (data.pinned) {
-      data.pinned = { ...data.pinned };
-      delete data.pinned[site.url];
-    }
-    await browser.storage.local.set({ shortcuts: data });
-    renderShortcuts();
-  });
+  if (site.pinned) {
+    rm.disabled = true;
+    rm.title = "Unpin to remove";
+  } else {
+    rm.title = "Remove";
+    rm.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (site.custom) {
+        data.custom = (data.custom || []).filter((c) => c.url !== site.url);
+      } else {
+        data.blocked = [...(data.blocked || []), site.url];
+      }
+      data.order = (data.order || []).filter((u) => u !== site.url);
+      await browser.storage.local.set({ shortcuts: data });
+      renderShortcuts();
+    });
+  }
   a.appendChild(rm);
 
-  a.addEventListener("dragstart", (e) => {
-    dragUrl = site.url;
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", site.url);
-    a.classList.add("dragging");
-  });
-  a.addEventListener("dragend", () => {
-    dragUrl = null;
-    a.classList.remove("dragging");
-  });
+  if (!site.pinned) {
+    a.addEventListener("dragstart", (e) => {
+      dragUrl = site.url;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", site.url);
+      a.classList.add("dragging");
+    });
+    a.addEventListener("dragend", () => {
+      dragUrl = null;
+      a.classList.remove("dragging");
+    });
+  }
   wireDropTarget(a, data, idx);
   return a;
 }
@@ -309,12 +329,12 @@ function makeEmptySlot(data, idx) {
   return d;
 }
 
-// Lock pinned shortcuts to their exact slot, then fill gaps left-to-right with
-// the remaining candidates. A pinned tile never moves unless it is unpinned.
-function computeSlots(candidates, pinned, limit) {
+// Lock pinned shortcuts to their exact slot; fill the remaining slots with the
+// other candidates, ordered by `order` (drag arrangement) then natural order.
+function computeSlots(candidates, pinned, order, limit) {
   const slots = new Array(limit).fill(null);
   const byUrl = new Map(candidates.map((c) => [c.url, c]));
-  const placed = new Set();
+  const placedPinned = new Set();
 
   Object.keys(pinned || {})
     .map((url) => [url, Number(pinned[url])])
@@ -323,16 +343,25 @@ function computeSlots(candidates, pinned, limit) {
     .forEach(([url, i]) => {
       if (slots[i]) return; // exact-slot collision (rare): loser flows into a gap
       slots[i] = { ...byUrl.get(url), pinned: true };
-      placed.add(url);
+      placedPinned.add(url);
     });
 
+  const orderIdx = new Map((order || []).map((u, i) => [u, i]));
+  const rest = candidates
+    .filter((c) => !placedPinned.has(c.url))
+    .map((c, i) => ({ c, i }))
+    .sort((a, b) => {
+      const oa = orderIdx.has(a.c.url) ? orderIdx.get(a.c.url) : Infinity;
+      const ob = orderIdx.has(b.c.url) ? orderIdx.get(b.c.url) : Infinity;
+      return oa - ob || a.i - b.i;
+    })
+    .map((x) => x.c);
+
   let cursor = 0;
-  for (const c of candidates) {
-    if (placed.has(c.url)) continue;
+  for (const c of rest) {
     while (cursor < limit && slots[cursor]) cursor++;
     if (cursor >= limit) break;
     slots[cursor] = { ...c, pinned: false };
-    placed.add(c.url);
   }
   return slots;
 }
@@ -400,7 +429,7 @@ async function renderShortcuts() {
   }
 
   const store = await browser.storage.local.get("shortcuts");
-  const data = store.shortcuts || { custom: [], blocked: [], pinned: {} };
+  const data = store.shortcuts || { custom: [], blocked: [], pinned: {}, order: [] };
 
   let top = [];
   try {
@@ -418,7 +447,7 @@ async function renderShortcuts() {
     ...top.filter((s) => !blocked.has(s.url) && !customUrls.has(s.url)),
   ];
 
-  const slots = computeSlots(candidates, data.pinned || {}, limit);
+  const slots = computeSlots(candidates, data.pinned || {}, data.order || [], limit);
   currentSlots = slots;
   let lastFilled = -1;
   slots.forEach((s, i) => { if (s) lastFilled = i; });

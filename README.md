@@ -66,8 +66,8 @@ Open the **⚙** button on the New Tab page (or the extension's options page):
 - Clock (12/24 h, seconds), search box + engine
 - **Shortcuts** — your Firefox Top Sites plus tiles you add yourself (hover a
   tile to remove it; the **+** tile adds one). 10 wide; 1-4 rows in settings.
-  Drag a tile to any slot to reposition it (occupied slots swap), or use 📌 to
-  lock a tile to its exact grid position.
+  Drag an unpinned tile to reorder it; use 📌 to lock a tile in place (a pinned
+  tile can't be moved or removed until you unpin it).
 - Darkening and blur of the background
 - Wallpaper caption (title / location / copyright, when Windows provides it)
 - History size, check interval, and image resolution (these are applied by the

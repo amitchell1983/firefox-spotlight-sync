@@ -8,11 +8,13 @@
   "Add" tile creates custom shortcuts. Fixed 10 tiles wide; settings *Show
   shortcuts* and *Shortcut rows* (1-4, default 3 → 10x3). Favicons come from
   the topSites API — still no network requests from the page.
-- **Reposition & pin shortcuts** — drag a tile onto any slot to move it there;
-  if that slot is taken the two tiles swap. The 📌 button pins/unpins in place.
-  A pinned tile is **locked to its exact grid slot** and never reflows (gaps
-  before it stay empty); unpinned tiles fill the gaps around pinned ones.
-  Persists in `storage.local.shortcuts.pinned` (`{ url: slotIndex }`).
+- **Reposition & pin shortcuts.** Drag an unpinned tile onto any slot to move
+  it there, shifting the other unpinned tiles (`storage.local.shortcuts.order`).
+  The 📌 button pins/unpins a tile: a **pinned tile is locked** — it can't be
+  dragged, can't be displaced by a drop, its remove (×) is disabled, and its
+  slot is fixed (`storage.local.shortcuts.pinned`, `{ url: slotIndex }`).
+  Dragging never changes pin state. The 📌 icon shows only on hover; the ring
+  around a tile marks it as pinned.
 
 ## 0.2.0 — 2026-09-05
 

@@ -152,7 +152,8 @@ main {
 .tile .pin { left: 2px; }
 .tile:hover .remove,
 .tile:hover .pin { opacity: 1; }
-.tile.pinned .pin { opacity: 1; background: rgba(255, 255, 255, 0.92); }
+.tile:hover .remove:disabled { opacity: 0.3; cursor: not-allowed; }
+.tile.pinned .pin { background: rgba(255, 255, 255, 0.92); }
 .tile.pinned .face { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6), 0 6px 20px rgba(0, 0, 0, 0.25); }
 .tile.dragging { opacity: 0.35; }
 .tile.drop-target .face { outline: 2px dashed rgba(255, 255, 255, 0.95); outline-offset: 2px; }
