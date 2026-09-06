@@ -50,6 +50,17 @@
   </section>
 
   <section class="card">
+    <h2>Settings &amp; shortcuts</h2>
+    <p>Your settings and shortcuts are mirrored to Firefox Sync storage, so they
+    survive extension updates and reinstalls. Use these for a full backup or to
+    move them to another profile.</p>
+    <button id="btn-export">Export to file</button>
+    <button id="btn-import">Import from file</button>
+    <input id="import-file" type="file" accept="application/json,.json" hidden>
+    <p id="io-msg" class="hint"></p>
+  </section>
+
+  <section class="card">
     <h2>Troubleshooting</h2>
     <p>Run <code>.\scripts\diagnose.ps1</code> from PowerShell. It verifies the
     helper files, the generated manifest and its path, the Firefox registry

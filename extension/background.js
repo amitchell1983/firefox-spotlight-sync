@@ -133,6 +133,36 @@ async function updateCurrentStatus(status, error) {
   }
 }
 
+// `settings` + `shortcuts` are mirrored to storage.sync so they survive an
+// extension update (storage.local may be cleared). On startup, pull anything
+// the local store is missing.
+async function reconcileSyncedStorage() {
+  const keys = ["settings", "shortcuts"];
+  let loc = {};
+  let syn = {};
+  try {
+    loc = await browser.storage.local.get(keys);
+  } catch (e) {
+    /* ignore */
+  }
+  try {
+    syn = await browser.storage.sync.get(keys);
+  } catch (e) {
+    /* ignore */
+  }
+  const patch = {};
+  for (const k of keys) {
+    if (loc[k] === undefined && syn[k] !== undefined) patch[k] = syn[k];
+  }
+  if (Object.keys(patch).length) {
+    try {
+      await browser.storage.local.set(patch);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+}
+
 async function pushHostConfig() {
   const { settings } = await browser.storage.local.get("settings");
   const s = settings || {};
@@ -205,4 +235,4 @@ browser.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-connect();
+reconcileSyncedStorage().finally(connect);

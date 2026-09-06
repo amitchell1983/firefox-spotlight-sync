@@ -25,6 +25,74 @@ const ENGINES = {
   duckduckgo: "https://duckduckgo.com/?q=",
 };
 
+// -------------------------------------------------------------------------
+// Persistence: `settings` + `shortcuts` are mirrored to storage.sync so they
+// survive an extension update / reinstall (storage.local can be cleared then).
+// storage.local stays the working copy everything else reads.
+// -------------------------------------------------------------------------
+const SYNCED_KEYS = ["settings", "shortcuts"];
+
+function shortcutsForSync(v) {
+  if (!v || !Array.isArray(v.custom)) return v;
+  return {
+    ...v,
+    custom: v.custom.map((c) => {
+      if (c.icon && c.icon.startsWith("data:")) {
+        const { icon, ...rest } = c; // drop heavy inline icon; re-resolves on restore
+        return rest;
+      }
+      return c;
+    }),
+  };
+}
+
+function mirrorToSync(partial) {
+  const out = {};
+  for (const [k, v] of Object.entries(partial)) {
+    out[k] = k === "shortcuts" ? shortcutsForSync(v) : v;
+  }
+  // best-effort: sync may be disabled or over quota — the local copy still holds
+  return browser.storage.sync.set(out).catch(() => {});
+}
+
+async function saveSetting(settings) {
+  await browser.storage.local.set({ settings });
+  mirrorToSync({ settings });
+}
+
+async function persistShortcuts(data) {
+  await browser.storage.local.set({ shortcuts: data });
+  mirrorToSync({ shortcuts: data });
+}
+
+// On startup, pull any synced key that the local store is missing (fresh install
+// after an update). Local wins when both exist — it's this device's working copy.
+async function reconcileSyncedStorage() {
+  let loc = {};
+  let syn = {};
+  try {
+    loc = await browser.storage.local.get(SYNCED_KEYS);
+  } catch (e) {
+    /* ignore */
+  }
+  try {
+    syn = await browser.storage.sync.get(SYNCED_KEYS);
+  } catch (e) {
+    /* ignore */
+  }
+  const patch = {};
+  for (const k of SYNCED_KEYS) {
+    if (loc[k] === undefined && syn[k] !== undefined) patch[k] = syn[k];
+  }
+  if (Object.keys(patch).length) {
+    try {
+      await browser.storage.local.set(patch);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+}
+
 const els = {
   shade: $("#shade"),
   clock: $("#clock"),
@@ -153,7 +221,7 @@ function bindSettingControls() {
       if (kind === "checked") settings[key] = el.checked;
       else if (kind === "number") settings[key] = Number(el.value);
       else settings[key] = el.value;
-      await browser.storage.local.set({ settings });
+      await saveSetting(settings);
       applySettings();
       renderMeta(lastRenderedMeta);
     });
@@ -219,7 +287,7 @@ function iconForCustom(url, topByHost) {
 }
 
 async function saveShortcuts(data) {
-  await browser.storage.local.set({ shortcuts: data });
+  await persistShortcuts(data);
   renderShortcuts();
 }
 
@@ -324,11 +392,29 @@ function makeTile(site, data, idx) {
         data.blocked = [...(data.blocked || []), site.url];
       }
       data.order = (data.order || []).filter((u) => u !== site.url);
-      await browser.storage.local.set({ shortcuts: data });
-      renderShortcuts();
+      if (data.pinned && site.url in data.pinned) {
+        data.pinned = { ...data.pinned };
+        delete data.pinned[site.url];
+      }
+      await saveShortcuts(data);
     });
   }
   a.appendChild(rm);
+
+  if (site.custom) {
+    const edit = document.createElement("button");
+    edit.className = "edit";
+    edit.type = "button";
+    edit.textContent = "✎"; // pencil
+    edit.title = "Edit name / URL / icon";
+    edit.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const entry = (data.custom || []).find((c) => c.url === site.url) || site;
+      showShortcutForm(data, entry);
+    });
+    a.appendChild(edit);
+  }
 
   if (!site.pinned) {
     a.addEventListener("dragstart", (e) => {
@@ -405,7 +491,7 @@ function makeAddTile(data) {
   label.className = "label";
   label.textContent = "Add";
   btn.appendChild(label);
-  btn.addEventListener("click", () => showAddForm(data));
+  btn.addEventListener("click", () => showShortcutForm(data));
   return btn;
 }
 
@@ -420,16 +506,21 @@ function normalizeUrl(v) {
   }
 }
 
-function showAddForm(data) {
+// Add form (editEntry omitted) or edit form for an existing custom shortcut.
+// The optional "Icon URL" field lets you point at an icon manually when the
+// site's favicon doesn't load.
+function showShortcutForm(data, editEntry) {
   const box = els.shortcuts;
-  if (box.querySelector(".shortcut-form")) return;
+  const open = box.querySelector(".shortcut-form");
+  if (open) open.remove();
+
+  const editing = !!editEntry;
   const form = document.createElement("form");
   form.className = "shortcut-form";
 
   const preview = document.createElement("span");
   preview.className = "face preview";
   preview.textContent = "+";
-  let previewIcon = null;
 
   const name = document.createElement("input");
   name.className = "name";
@@ -442,52 +533,97 @@ function showAddForm(data) {
   url.placeholder = "example.com";
   url.required = true;
 
+  const iconUrl = document.createElement("input");
+  iconUrl.className = "icon-url";
+  iconUrl.type = "text";
+  iconUrl.placeholder = "Icon URL (optional)";
+
+  if (editing) {
+    name.value = editEntry.title || "";
+    url.value = editEntry.url || "";
+    iconUrl.value = editEntry.iconManual ? editEntry.icon || "" : "";
+  }
+
   const save = document.createElement("button");
   save.type = "submit";
   save.className = "chip";
-  save.textContent = "Save";
+  save.textContent = editing ? "Update" : "Save";
 
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "chip ghost";
+  cancel.textContent = "Cancel";
+  cancel.addEventListener("click", () => form.remove());
+
+  let resolvedIcon = editing ? editEntry.icon || null : null;
   let debounce;
   const updatePreview = () => {
+    const manual = iconUrl.value.trim();
     const u = normalizeUrl(url.value);
-    previewIcon = null;
+    const src = manual || (u ? iconForCustom(u, null) : null);
+    resolvedIcon = null;
     preview.textContent = "";
-    if (!u) {
+    if (!src) {
       preview.textContent = "+";
       return;
     }
-    const src = iconForCustom(u, null); // site's own /favicon.ico
     const img = document.createElement("img");
     img.alt = "";
     img.addEventListener("load", () => {
-      previewIcon = src;
+      resolvedIcon = src;
     });
     img.addEventListener("error", () => {
       img.remove();
-      preview.textContent = (hostOf(u)[0] || "?").toUpperCase();
+      preview.textContent = ((hostOf(u) || "?")[0] || "?").toUpperCase();
     });
     img.src = src;
     preview.appendChild(img);
   };
-  url.addEventListener("input", () => {
+  const schedule = () => {
     clearTimeout(debounce);
     debounce = setTimeout(updatePreview, 400);
-  });
+  };
+  url.addEventListener("input", schedule);
+  iconUrl.addEventListener("input", schedule);
+  updatePreview();
 
-  form.append(preview, name, url, save);
+  form.append(preview, name, url, iconUrl, save, cancel);
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const u = normalizeUrl(url.value);
     if (!u) return;
+    const manual = iconUrl.value.trim();
+
     const entry = { title: name.value.trim() || hostOf(u), url: u };
-    if (previewIcon) entry.icon = previewIcon; // else renderShortcuts() backfills
-    data.custom = [...(data.custom || []), entry];
-    await browser.storage.local.set({ shortcuts: data });
-    renderShortcuts();
+    if (manual) {
+      entry.icon = manual;
+      entry.iconManual = true;
+    } else if (resolvedIcon) {
+      entry.icon = resolvedIcon; // a favicon that actually loaded; else backfilled
+    }
+
+    data.custom = [...(data.custom || [])];
+    if (editing) {
+      const i = data.custom.findIndex((c) => c.url === editEntry.url);
+      if (i >= 0) data.custom[i] = entry;
+      else data.custom.push(entry);
+      if (editEntry.url !== u) {
+        if (data.pinned && editEntry.url in data.pinned) {
+          data.pinned = { ...data.pinned, [u]: data.pinned[editEntry.url] };
+          delete data.pinned[editEntry.url];
+        }
+        if (Array.isArray(data.order)) {
+          data.order = data.order.map((x) => (x === editEntry.url ? u : x));
+        }
+      }
+    } else {
+      data.custom.push(entry);
+    }
+    await saveShortcuts(data);
   });
 
   box.appendChild(form);
-  name.focus();
+  (editing ? url : name).focus();
 }
 
 async function renderShortcuts() {
@@ -529,7 +665,7 @@ async function renderShortcuts() {
   });
   if (iconsChanged) {
     data.custom = custom;
-    browser.storage.local.set({ shortcuts: data }).catch(() => {});
+    persistShortcuts(data).catch(() => {});
   }
 
   const blocked = new Set(data.blocked || []);
@@ -658,6 +794,7 @@ browser.storage.onChanged.addListener((changes, area) => {
 });
 
 async function init() {
+  await reconcileSyncedStorage();
   const store = await browser.storage.local.get(["settings", "current"]);
   settings = { ...DEFAULTS, ...(store.settings || {}) };
   bindSettingControls();

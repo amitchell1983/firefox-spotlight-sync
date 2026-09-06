@@ -73,7 +73,11 @@ Open the **⚙** button on the New Tab page (or the extension's options page):
   tile to remove it; the **+** tile adds one). 10 wide; 1-4 rows in settings.
   Drag an unpinned tile to reorder it; use 📌 to lock a tile in place (a pinned
   tile can't be moved or removed until you unpin it). Added shortcuts pick up
-  the site's favicon automatically.
+  the site's favicon automatically; the ✎ button on a custom tile lets you fix
+  the name, URL, or point at an icon URL yourself.
+- **Persists across updates** — settings and shortcuts are mirrored to Firefox
+  Sync storage, so an extension update or reinstall keeps them. The options
+  page also has Export / Import for a backup file.
 - Darkening and blur of the background
 - Wallpaper caption (title / location / copyright, when Windows provides it)
 - History size, check interval, and image resolution (these are applied by the

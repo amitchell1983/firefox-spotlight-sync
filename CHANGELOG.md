@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Manual shortcut icon.** Custom shortcuts have an "Icon URL" field (in the
+  Add form and a new edit ✎ button on each custom tile) so you can point at an
+  icon yourself when the site's favicon doesn't load. A manual icon is marked
+  `iconManual` and never auto-overwritten; clearing it re-resolves normally.
+  The edit form also lets you change a shortcut's name/URL (pin + order
+  references migrate with a URL change).
+- **Settings & shortcuts persist across updates.** `settings` and `shortcuts`
+  are mirrored to `storage.sync`; on startup anything missing from
+  `storage.local` (e.g. after an update or reinstall) is restored from it.
+  `data:` favicons are dropped from the synced copy (re-resolved on restore) to
+  stay within sync quota. Options page gains **Export / Import** (JSON) for a
+  full-fidelity backup. Note: `storage.local` remains the working copy and wins
+  when both exist — this is update resilience, not live multi-device merge.
+
 ## 0.3.0 — 2026-09-05
 
 ### Added

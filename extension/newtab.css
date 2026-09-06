@@ -133,7 +133,8 @@ main {
   .shortcuts { grid-template-columns: repeat(5, 1fr); }
 }
 .tile .remove,
-.tile .pin {
+.tile .pin,
+.tile .edit {
   position: absolute;
   top: -6px;
   width: 20px;
@@ -150,8 +151,10 @@ main {
 }
 .tile .remove { right: 2px; font-size: 13px; }
 .tile .pin { left: 2px; }
+.tile .edit { left: 50%; transform: translateX(-50%); font-size: 11px; }
 .tile:hover .remove,
-.tile:hover .pin { opacity: 1; }
+.tile:hover .pin,
+.tile:hover .edit { opacity: 1; }
 .tile:hover .remove:disabled { opacity: 0.3; cursor: not-allowed; }
 .tile.pinned .pin { background: rgba(255, 255, 255, 0.92); }
 .tile.pinned .face { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6), 0 6px 20px rgba(0, 0, 0, 0.25); }
@@ -194,8 +197,13 @@ main {
   color: #111;
   font-size: 13px;
 }
-.shortcut-form input.name { width: 130px; }
-.shortcut-form input.url { width: 220px; }
+.shortcut-form input.name { width: 120px; }
+.shortcut-form input.url { width: 200px; }
+.shortcut-form input.icon-url { width: 200px; }
+.shortcut-form .chip.ghost {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
 
 .meta {
   margin-top: 26px;
