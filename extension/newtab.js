@@ -11,6 +11,8 @@ const DEFAULTS = {
   darkness: 0.28,
   blur: 0,
   showMeta: true,
+  shortcuts: true,
+  shortcutsCount: 8,
   historyMax: 10,
   pollSeconds: 15,
   maxDimension: 1600,
@@ -29,6 +31,7 @@ const els = {
   date: $("#date"),
   search: $("#search"),
   q: $("#q"),
+  shortcuts: $("#shortcuts"),
   meta: $("#meta"),
   status: $("#status"),
   btnLive: $("#btn-live"),
@@ -122,6 +125,7 @@ function applySettings() {
   bgFront.style.filter = blur;
   bgBack.style.filter = blur;
   tickClock();
+  renderShortcuts();
 }
 
 function bindSettingControls() {
@@ -131,6 +135,8 @@ function bindSettingControls() {
     ["#s-hour24", "hour24", "checked"],
     ["#s-search", "search", "checked"],
     ["#s-showmeta", "showMeta", "checked"],
+    ["#s-shortcuts", "shortcuts", "checked"],
+    ["#s-shortcutscount", "shortcutsCount", "number"],
     ["#s-engine", "engine", "value"],
     ["#s-darkness", "darkness", "number"],
     ["#s-blur", "blur", "number"],
@@ -155,6 +161,149 @@ function bindSettingControls() {
 }
 
 let lastRenderedMeta = null;
+
+// -------------------------------------------------------------------------
+// Shortcuts (Firefox Top Sites + user-added tiles)
+// -------------------------------------------------------------------------
+function hostOf(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+function tileFace(site) {
+  const face = document.createElement("span");
+  face.className = "face";
+  if (site.favicon) {
+    const img = document.createElement("img");
+    img.src = site.favicon;
+    img.alt = "";
+    face.appendChild(img);
+  } else {
+    const h = hostOf(site.url);
+    face.textContent = (h[0] || (site.title || "?")[0] || "?").toUpperCase();
+  }
+  return face;
+}
+
+function makeTile(site, data) {
+  const a = document.createElement("a");
+  a.className = "tile";
+  a.href = site.url;
+  a.title = site.url;
+  a.appendChild(tileFace(site));
+
+  const label = document.createElement("span");
+  label.className = "label";
+  label.textContent = site.title || hostOf(site.url);
+  a.appendChild(label);
+
+  const rm = document.createElement("button");
+  rm.className = "remove";
+  rm.type = "button";
+  rm.textContent = "×";
+  rm.title = "Remove";
+  rm.addEventListener("click", async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (site.custom) {
+      data.custom = (data.custom || []).filter((c) => c.url !== site.url);
+    } else {
+      data.blocked = [...(data.blocked || []), site.url];
+    }
+    await browser.storage.local.set({ shortcuts: data });
+    renderShortcuts();
+  });
+  a.appendChild(rm);
+  return a;
+}
+
+function makeAddTile(data) {
+  const btn = document.createElement("button");
+  btn.className = "tile add";
+  btn.type = "button";
+  const face = document.createElement("span");
+  face.className = "face";
+  face.textContent = "+";
+  btn.appendChild(face);
+  const label = document.createElement("span");
+  label.className = "label";
+  label.textContent = "Add";
+  btn.appendChild(label);
+  btn.addEventListener("click", () => showAddForm(data));
+  return btn;
+}
+
+function showAddForm(data) {
+  const box = els.shortcuts;
+  if (box.querySelector(".shortcut-form")) return;
+  const form = document.createElement("form");
+  form.className = "shortcut-form";
+
+  const name = document.createElement("input");
+  name.className = "name";
+  name.placeholder = "Name";
+  name.required = true;
+
+  const url = document.createElement("input");
+  url.className = "url";
+  url.type = "text";
+  url.placeholder = "example.com";
+  url.required = true;
+
+  const save = document.createElement("button");
+  save.type = "submit";
+  save.className = "chip";
+  save.textContent = "Save";
+
+  form.append(name, url, save);
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    let u = url.value.trim();
+    if (!u) return;
+    if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+    data.custom = [...(data.custom || []), { title: name.value.trim() || hostOf(u), url: u }];
+    await browser.storage.local.set({ shortcuts: data });
+    renderShortcuts();
+  });
+
+  box.appendChild(form);
+  name.focus();
+}
+
+async function renderShortcuts() {
+  const box = els.shortcuts;
+  if (!box) return;
+  if (!settings.shortcuts) {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+
+  const store = await browser.storage.local.get("shortcuts");
+  const data = store.shortcuts || { custom: [], blocked: [] };
+
+  let top = [];
+  try {
+    top = await browser.topSites.get({ includeFavicon: true, limit: 24 });
+  } catch (e) {
+    top = [];
+  }
+
+  const blocked = new Set(data.blocked || []);
+  const customUrls = new Set((data.custom || []).map((c) => c.url));
+  const merged = [
+    ...(data.custom || []).map((c) => ({ ...c, custom: true })),
+    ...top.filter((s) => !blocked.has(s.url) && !customUrls.has(s.url)),
+  ].slice(0, settings.shortcutsCount);
+
+  box.innerHTML = "";
+  box.hidden = false;
+  for (const site of merged) box.appendChild(makeTile(site, data));
+  box.appendChild(makeAddTile(data));
+}
 
 // -------------------------------------------------------------------------
 // Clock
@@ -254,6 +403,7 @@ browser.storage.onChanged.addListener((changes, area) => {
     renderCurrent(cur);
     lastRenderedMeta = cur && cur.meta;
   }
+  if (changes.shortcuts) renderShortcuts();
 });
 
 async function init() {

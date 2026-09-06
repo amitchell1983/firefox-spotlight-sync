@@ -38,6 +38,8 @@ Framing: `[uint32 little-endian length][UTF-8 JSON]`. Requests may carry an
    was a hard-coded Linux build path `/mnt/data/...`.)
 3. **Extension id `windows-spotlight-sync@example.local`** must match
    `allowed_extensions` in the manifest template.
+   Extension permissions: `nativeMessaging`, `storage`, `topSites` (no host
+   permissions; the page makes no network requests).
 4. **Keep host→extension messages under ~1 MB** (Firefox's limit). The image
    payload is bounded to ≤ `MaxBase64` (700 KB base64) by progressively
    lowering quality then dimension — see `Get-BoundedDataUrl`.

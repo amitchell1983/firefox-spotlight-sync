@@ -7,7 +7,7 @@ No bundler, no npm. Use the `browser.*` promise API.
 
 | File | Role |
 |------|------|
-| `manifest.json` | MV2. `persistent: true` background (we hold a long-lived native port). `chrome_url_overrides.newtab`. `permissions: nativeMessaging, storage`. |
+| `manifest.json` | MV2. `persistent: true` background (we hold a long-lived native port). `chrome_url_overrides.newtab`. `permissions: nativeMessaging, storage, topSites`. |
 | `background.js` | Owns the single `connectNative("windows_spotlight_sync")` port. Caches the current image into `storage.local`, retries the port with exponential backoff (3s→60s), and proxies page requests to the helper with `id` correlation. |
 | `newtab.html/.css/.js` | Renders from `storage.local`; two `.bg` layers for crossfade; settings + history panel; clock; search. Never calls `connectNative` itself. |
 | `options.html/.css/.js` | Setup instructions, live "Test native helper", history size + clear, reset settings. |
@@ -19,9 +19,14 @@ No bundler, no npm. Use the `browser.*` promise API.
 current  = { status: "ok"|"disconnected"|"unavailable",
              hash, image /* data URL */, meta, source, path, timestamp, updatedAt, error? }
 settings = { clock, clockSeconds, hour24, search, engine,
-             darkness, blur, showMeta,
-             historyMax, pollSeconds, maxDimension, jpegQuality }   // host keys forwarded via set_config
+             darkness, blur, showMeta, shortcuts, shortcutsCount,
+             historyMax, pollSeconds, maxDimension, jpegQuality }   // last 4 forwarded to the helper via set_config
+shortcuts = { custom: [{ title, url }], blocked: [url, ...] }       // overlay on browser.topSites.get()
 ```
+
+Shortcuts grid = user `custom` tiles first, then `browser.topSites.get({includeFavicon:true})`
+minus `blocked`, sliced to `shortcutsCount`, plus an "Add" tile. Favicons come
+from the topSites API (Firefox's cache) — the page makes no network requests.
 
 `newtab.js` merges `settings` over `DEFAULTS`; `background.js` forwards the
 four host keys to the helper via `set_config` whenever `settings` changes.

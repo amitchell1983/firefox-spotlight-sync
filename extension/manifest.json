@@ -11,7 +11,8 @@
   },
   "permissions": [
     "nativeMessaging",
-    "storage"
+    "storage",
+    "topSites"
   ],
   "icons": {
     "48": "icons/icon.svg",

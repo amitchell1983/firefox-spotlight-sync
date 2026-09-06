@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Shortcuts grid** on the New Tab page: Firefox Top Sites
+  (`topSites` permission) merged with user-added tiles, each removable; an
+  "Add" tile creates custom shortcuts. New settings: *Show shortcuts* and
+  *Shortcut count* (4 / 8 / 12). Stored in `storage.local.shortcuts`
+  (`{ custom, blocked }`). Favicons come from the topSites API — still no
+  network requests from the page.
+
 ## 0.2.0 — 2026-09-05
 
 Full rebuild around a dependency-free helper and automatic sync.

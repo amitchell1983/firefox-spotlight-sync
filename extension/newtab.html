@@ -18,6 +18,8 @@
       <input id="q" type="search" placeholder="Search the web" autocomplete="off" spellcheck="false">
     </form>
 
+    <div class="shortcuts" id="shortcuts" hidden></div>
+
     <div class="meta" id="meta" hidden></div>
   </main>
 
@@ -50,6 +52,14 @@
       <label class="row">Darkening <input type="range" id="s-darkness" min="0" max="0.75" step="0.01"></label>
       <label class="row">Blur <input type="range" id="s-blur" min="0" max="24" step="1"></label>
       <label class="row"><input type="checkbox" id="s-showmeta"> Show wallpaper caption</label>
+      <label class="row"><input type="checkbox" id="s-shortcuts"> Show shortcuts</label>
+      <label class="row">Shortcut count
+        <select id="s-shortcutscount">
+          <option value="4">4</option>
+          <option value="8">8</option>
+          <option value="12">12</option>
+        </select>
+      </label>
 
       <hr>
       <label class="row">Keep history
