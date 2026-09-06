@@ -27,12 +27,14 @@ shortcuts = { custom: [{ title, url }], blocked: [url, ...],
 
 Shortcuts grid: candidates = `custom` tiles then
 `browser.topSites.get({includeFavicon:true})` minus `blocked`. `computeSlots()`
-places `pinned` urls at their slot index (bumping to the next free slot on a
-collision), then fills the rest left-to-right; rendered through the last filled
-slot (gaps are drop targets). Grid is fixed 10 wide; `shortcutRows` 1-4
-(default 3). Tiles are `draggable` — drop on a tile/empty slot pins the dragged
-url there; the 📌 button pins/unpins in place. Favicons come from the topSites
-API (Firefox's cache) — the page makes no network requests.
+**locks** each `pinned` url to its exact slot index (never moved; a same-index
+collision is the only exception), then fills the remaining gaps left-to-right;
+rendered through the last filled slot (interior gaps are drop targets). Grid is
+fixed 10 wide; `shortcutRows` 1-4 (default 3). Tiles are `draggable`; dropping
+on a slot pins the dragged url there and, if occupied, swaps — the displaced
+tile takes the dragged tile's old slot (`dropOnSlot`, using `currentSlots`).
+The 📌 button pins/unpins in place. Favicons come from the topSites API
+(Firefox's cache) — the page makes no network requests.
 
 `newtab.js` merges `settings` over `DEFAULTS`; `background.js` forwards the
 four host keys to the helper via `set_config` whenever `settings` changes.

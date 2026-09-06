@@ -166,6 +166,7 @@ let lastRenderedMeta = null;
 // Shortcuts (Firefox Top Sites + user-added tiles)
 // -------------------------------------------------------------------------
 let dragUrl = null; // url of the tile currently being dragged
+let currentSlots = []; // last rendered slot layout, indexed by grid position
 
 function hostOf(url) {
   try {
@@ -190,18 +191,35 @@ function tileFace(site) {
   return face;
 }
 
+async function saveShortcuts(data) {
+  await browser.storage.local.set({ shortcuts: data });
+  renderShortcuts();
+}
+
+// Pin `url` to an exact grid slot (locked there until unpinned).
 async function pinAt(data, url, idx) {
   data.pinned = { ...(data.pinned || {}) };
   data.pinned[url] = idx;
-  await browser.storage.local.set({ shortcuts: data });
-  renderShortcuts();
+  await saveShortcuts(data);
 }
 
 async function unpin(data, url) {
   data.pinned = { ...(data.pinned || {}) };
   delete data.pinned[url];
-  await browser.storage.local.set({ shortcuts: data });
-  renderShortcuts();
+  await saveShortcuts(data);
+}
+
+// Drop `url` onto slot `idx`. If another tile sits there, swap them so the
+// displaced tile takes the dragged tile's old slot (both end up locked).
+async function dropOnSlot(data, url, idx) {
+  const occupant = currentSlots[idx];
+  const fromIdx = currentSlots.findIndex((s) => s && s.url === url);
+  data.pinned = { ...(data.pinned || {}) };
+  data.pinned[url] = idx;
+  if (occupant && occupant.url !== url && fromIdx >= 0) {
+    data.pinned[occupant.url] = fromIdx;
+  }
+  await saveShortcuts(data);
 }
 
 function wireDropTarget(el, data, idx) {
@@ -215,7 +233,7 @@ function wireDropTarget(el, data, idx) {
   el.addEventListener("drop", (e) => {
     e.preventDefault();
     el.classList.remove("drop-target");
-    if (dragUrl) pinAt(data, dragUrl, idx);
+    if (dragUrl) dropOnSlot(data, dragUrl, idx);
   });
 }
 
@@ -291,7 +309,8 @@ function makeEmptySlot(data, idx) {
   return d;
 }
 
-// Place pinned shortcuts at their slots, then fill the rest left-to-right.
+// Lock pinned shortcuts to their exact slot, then fill gaps left-to-right with
+// the remaining candidates. A pinned tile never moves unless it is unpinned.
 function computeSlots(candidates, pinned, limit) {
   const slots = new Array(limit).fill(null);
   const byUrl = new Map(candidates.map((c) => [c.url, c]));
@@ -299,15 +318,12 @@ function computeSlots(candidates, pinned, limit) {
 
   Object.keys(pinned || {})
     .map((url) => [url, Number(pinned[url])])
-    .filter(([url, i]) => byUrl.has(url) && i >= 0 && i < limit)
+    .filter(([url, i]) => byUrl.has(url) && Number.isInteger(i) && i >= 0 && i < limit)
     .sort((a, b) => a[1] - b[1])
     .forEach(([url, i]) => {
-      let slot = i;
-      while (slot < limit && slots[slot]) slot++;
-      if (slot < limit) {
-        slots[slot] = { ...byUrl.get(url), pinned: true };
-        placed.add(url);
-      }
+      if (slots[i]) return; // exact-slot collision (rare): loser flows into a gap
+      slots[i] = { ...byUrl.get(url), pinned: true };
+      placed.add(url);
     });
 
   let cursor = 0;
@@ -403,6 +419,7 @@ async function renderShortcuts() {
   ];
 
   const slots = computeSlots(candidates, data.pinned || {}, limit);
+  currentSlots = slots;
   let lastFilled = -1;
   slots.forEach((s, i) => { if (s) lastFilled = i; });
 
