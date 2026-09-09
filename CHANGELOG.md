@@ -2,6 +2,12 @@
 
 ## 0.3.2 — 2026-09-05
 
+### Published
+- Passed Mozilla review and is now listed on
+  [addons.mozilla.org](https://addons.mozilla.org/firefox/addon/windows-spotlight-sync/)
+  (approved 2026-09-08) — signed and auto-updating. The native helper still
+  installs separately via `scripts\install.ps1`.
+
 ### Changed
 - Prepared for AMO (addons.mozilla.org) signing and listing. Manifest declares
   `browser_specific_settings.gecko.data_collection_permissions` as `["none"]`

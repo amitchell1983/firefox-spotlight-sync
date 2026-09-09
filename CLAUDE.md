@@ -72,6 +72,12 @@ Set-ExecutionPolicy -Scope Process Bypass
 Then restart Firefox and load `extension\manifest.json` via
 `about:debugging#/runtime/this-firefox` (temporary), or install the `.xpi`.
 
+The extension is **listed on AMO** as of 0.3.2 (approved 2026-09-08):
+<https://addons.mozilla.org/firefox/addon/windows-spotlight-sync/>. Release
+builds are uploaded there; the native helper is always installed separately via
+`scripts\install.ps1`. Listing/reviewer notes are kept in the git-ignored
+`AMO-SUBMISSION.md` (local only, not committed).
+
 ## Conventions
 
 - PowerShell: `Set-StrictMode -Version 2.0`, `-LiteralPath` for user paths,

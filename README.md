@@ -24,6 +24,12 @@ automatically as Windows rotates it.
 
 ## Install
 
+The extension is listed on
+**[Firefox Add-ons](https://addons.mozilla.org/firefox/addon/windows-spotlight-sync/)**,
+so it installs and updates like any other add-on. It still needs the native
+helper (a local PowerShell script) — Firefox add-ons can't ship one — so the
+install is two parts: the helper, then the extension.
+
 1. Extract this project somewhere permanent, e.g. `C:\Tools\FirefoxSpotlightSync`.
 2. Open **PowerShell** in that folder and run:
    ```powershell
@@ -31,24 +37,30 @@ automatically as Windows rotates it.
    .\scripts\install.ps1
    ```
    This generates the native-messaging manifest with an absolute path to the
-   helper, registers it under your user account (`HKCU`), and builds
-   `dist\windows_spotlight_sync-<version>.xpi`.
+   helper and registers it under your user account (`HKCU`). (It also builds
+   `dist\windows_spotlight_sync-<version>.xpi` for the unsigned-install route
+   below; AMO users don't need it.)
 3. **Fully close and reopen Firefox.**
-4. Load the extension:
-   - **Temporary** (resets on Firefox restart): open
-     `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** →
-     select `extension\manifest.json`.
-   - **Permanent**: see *Permanent installation* below.
+4. Install the extension:
+   - **Recommended** — from
+     [addons.mozilla.org](https://addons.mozilla.org/firefox/addon/windows-spotlight-sync/):
+     click **Add to Firefox**. Signed, auto-updating, works on release Firefox.
+   - **Unsigned build** — load `dist\windows_spotlight_sync-<version>.xpi`
+     yourself; see *Unsigned / development install* below.
 5. Firefox asks once to confirm the homepage / new-window change — choose
    **Keep Changes**. (Revert any time from `about:preferences#home` or by
    removing the extension.)
 6. Open a new tab, or a new window.
 
-## Permanent installation
+## Unsigned / development install
 
-Firefox only loads extensions permanently if they are signed, **or** the build
-allows unsigned extensions:
+Most people should just install the signed build from
+[addons.mozilla.org](https://addons.mozilla.org/firefox/addon/windows-spotlight-sync/).
+The routes below are for running a local build (e.g. unreleased changes):
 
+- **Temporary** (resets on Firefox restart) — open
+  `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → select
+  `extension\manifest.json`.
 - **Firefox Developer Edition / Nightly / ESR** — set
   `xpinstall.signatures.required = false` in `about:config`, then open the
   `.xpi` from `dist\` (drag it onto Firefox or `about:addons` → *Install Add-on
@@ -60,11 +72,6 @@ allows unsigned extensions:
   This writes `distribution\policies.json` in the Firefox program folder with an
   `ExtensionSettings` entry pointing at the built `.xpi`. Signature rules still
   apply on release Firefox.
-- **Signed** — submit the built `.xpi` to
-  [addons.mozilla.org](https://addons.mozilla.org/developers/) for signing and
-  install the signed `.xpi`. Step-by-step listing/signing instructions,
-  ready-to-paste store copy, privacy policy, and reviewer notes are in
-  [`AMO-SUBMISSION.md`](AMO-SUBMISSION.md).
 
 ## Settings
 
