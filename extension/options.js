@@ -11,18 +11,23 @@ function setStatus(text, kind) {
 }
 
 // Mirror settings/shortcuts to storage.sync so they survive extension updates.
+// Same as newtab.js: inline data: icons are dropped from the synced copy.
+function dropDataIcon(c) {
+  if (c && c.icon && c.icon.startsWith("data:")) {
+    const { icon, ...rest } = c;
+    return rest;
+  }
+  return c;
+}
 function shortcutsForSync(v) {
   if (!v || !Array.isArray(v.custom)) return v;
-  return {
-    ...v,
-    custom: v.custom.map((c) => {
-      if (c.icon && c.icon.startsWith("data:")) {
-        const { icon, ...rest } = c;
-        return rest;
-      }
-      return c;
-    }),
-  };
+  const out = { ...v, custom: v.custom.map(dropDataIcon) };
+  if (v.pinnedMeta) {
+    out.pinnedMeta = Object.fromEntries(
+      Object.entries(v.pinnedMeta).map(([u, m]) => [u, dropDataIcon(m)])
+    );
+  }
+  return out;
 }
 function mirrorToSync(partial) {
   const out = {};

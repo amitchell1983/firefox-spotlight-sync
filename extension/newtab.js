@@ -32,18 +32,23 @@ const ENGINES = {
 // -------------------------------------------------------------------------
 const SYNCED_KEYS = ["settings", "shortcuts"];
 
+function dropDataIcon(c) {
+  if (c && c.icon && c.icon.startsWith("data:")) {
+    const { icon, ...rest } = c; // drop heavy inline icon; re-resolves on restore
+    return rest;
+  }
+  return c;
+}
+
 function shortcutsForSync(v) {
   if (!v || !Array.isArray(v.custom)) return v;
-  return {
-    ...v,
-    custom: v.custom.map((c) => {
-      if (c.icon && c.icon.startsWith("data:")) {
-        const { icon, ...rest } = c; // drop heavy inline icon; re-resolves on restore
-        return rest;
-      }
-      return c;
-    }),
-  };
+  const out = { ...v, custom: v.custom.map(dropDataIcon) };
+  if (v.pinnedMeta) {
+    out.pinnedMeta = Object.fromEntries(
+      Object.entries(v.pinnedMeta).map(([u, m]) => [u, dropDataIcon(m)])
+    );
+  }
+  return out;
 }
 
 function mirrorToSync(partial) {
@@ -244,6 +249,16 @@ function hostOf(url) {
   }
 }
 
+// Same-site key, matching Firefox's Top Sites one-per-host dedupe: host
+// (with port), "www." stripped.
+function siteKey(url) {
+  try {
+    return new URL(url).host.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
 function letterFor(site) {
   const h = hostOf(site.url || "");
   return (h[0] || (site.title || "?")[0] || "?").toUpperCase();
@@ -291,17 +306,50 @@ async function saveShortcuts(data) {
   renderShortcuts();
 }
 
-// Pin `url` — lock it to its current grid slot. Only the pin button calls this.
-async function pinAt(data, url, idx) {
-  data.pinned = { ...(data.pinned || {}) };
-  data.pinned[url] = idx;
+// Pin `site` — lock it to its current grid slot. Only the pin button calls this.
+// The slot holds exactly this URL from now on: any other pin on it is dropped,
+// and a Top Sites tile is snapshotted (title + favicon) so it keeps rendering
+// even when Firefox's Top Sites stops returning that exact URL.
+async function pinAt(data, site, idx) {
+  data.pinned = Object.fromEntries(
+    Object.entries(data.pinned || {}).filter(([, i]) => Number(i) !== idx)
+  );
+  data.pinned[site.url] = idx;
+  if (!site.custom) {
+    data.pinnedMeta = {
+      ...(data.pinnedMeta || {}),
+      [site.url]: { title: site.title || hostOf(site.url), icon: site.favicon || null },
+    };
+  }
   await saveShortcuts(data);
 }
 
 async function unpin(data, url) {
   data.pinned = { ...(data.pinned || {}) };
   delete data.pinned[url];
+  if (data.pinnedMeta) {
+    data.pinnedMeta = { ...data.pinnedMeta };
+    delete data.pinnedMeta[url];
+  }
   await saveShortcuts(data);
+}
+
+// One URL per slot. Builds before 0.3.3 could stack several pins on a slot (a
+// pin whose URL dropped out of Top Sites freed its slot to be pinned again).
+// Keep the one that was on screen — the first still available — else the most
+// recently pinned.
+function onePinPerSlot(pinned, available) {
+  const bySlot = new Map();
+  for (const [url, i] of Object.entries(pinned || {})) {
+    const k = Number(i);
+    if (!bySlot.has(k)) bySlot.set(k, []);
+    bySlot.get(k).push(url);
+  }
+  const out = {};
+  for (const [i, urls] of bySlot) {
+    out[urls.find((u) => available.has(u)) || urls[urls.length - 1]] = i;
+  }
+  return out;
 }
 
 // Reorder an unpinned tile to the position of slot `idx`, shifting the other
@@ -370,7 +418,7 @@ function makeTile(site, data, idx) {
     e.preventDefault();
     e.stopPropagation();
     if (site.pinned) unpin(data, site.url);
-    else pinAt(data, site.url, idx);
+    else pinAt(data, site, idx);
   });
   a.appendChild(pin);
 
@@ -406,13 +454,18 @@ function makeTile(site, data, idx) {
     edit.className = "edit";
     edit.type = "button";
     edit.textContent = "✎"; // pencil
-    edit.title = "Edit name / URL / icon";
-    edit.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const entry = (data.custom || []).find((c) => c.url === site.url) || site;
-      showShortcutForm(data, entry);
-    });
+    if (site.pinned) {
+      edit.disabled = true; // a pinned tile is frozen: unpin, then edit
+      edit.title = "Unpin to edit";
+    } else {
+      edit.title = "Edit name / URL / icon";
+      edit.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const entry = (data.custom || []).find((c) => c.url === site.url) || site;
+        showShortcutForm(data, entry);
+      });
+    }
     a.appendChild(edit);
   }
 
@@ -444,24 +497,29 @@ function makeEmptySlot(data, idx) {
 
 // Lock pinned shortcuts to their exact slot; fill the remaining slots with the
 // other candidates, ordered by `order` (drag arrangement) then natural order.
-function computeSlots(candidates, pinned, order, limit) {
+// Pins never depend on Top Sites: `pinnedTile(url)` builds each one from its
+// custom entry or its frozen snapshot, so it renders even when Firefox stops
+// returning that URL. Unpinned Top Sites tiles for a pinned tile's site are
+// dropped, so a drifted URL for the same site can't appear beside the pin.
+function computeSlots(candidates, pinned, order, limit, pinnedTile) {
   const slots = new Array(limit).fill(null);
-  const byUrl = new Map(candidates.map((c) => [c.url, c]));
   const placedPinned = new Set();
 
   Object.keys(pinned || {})
     .map((url) => [url, Number(pinned[url])])
-    .filter(([url, i]) => byUrl.has(url) && Number.isInteger(i) && i >= 0 && i < limit)
+    .filter(([, i]) => Number.isInteger(i) && i >= 0 && i < limit)
     .sort((a, b) => a[1] - b[1])
     .forEach(([url, i]) => {
-      if (slots[i]) return; // exact-slot collision (rare): loser flows into a gap
-      slots[i] = { ...byUrl.get(url), pinned: true };
+      if (slots[i]) return; // collision; onePinPerSlot() prevents this upstream
+      slots[i] = { ...pinnedTile(url), pinned: true };
       placedPinned.add(url);
     });
 
+  const pinnedSites = new Set([...placedPinned].map(siteKey));
   const orderIdx = new Map((order || []).map((u, i) => [u, i]));
   const rest = candidates
     .filter((c) => !placedPinned.has(c.url))
+    .filter((c) => c.custom || !pinnedSites.has(siteKey(c.url)))
     .map((c, i) => ({ c, i }))
     .sort((a, b) => {
       const oa = orderIdx.has(a.c.url) ? orderIdx.get(a.c.url) : Infinity;
@@ -663,21 +721,67 @@ async function renderShortcuts() {
     iconsChanged = true;
     return { ...c, icon: iconForCustom(c.url, topByHost) };
   });
-  if (iconsChanged) {
-    data.custom = custom;
-    persistShortcuts(data).catch(() => {});
-  }
+  if (iconsChanged) data.custom = custom;
 
   const blocked = new Set(data.blocked || []);
-  const customUrls = new Set(custom.map((c) => c.url));
+  const customByUrl = new Map(custom.map((c) => [c.url, c]));
   const rows = Math.min(4, Math.max(1, settings.shortcutRows || 3));
   const limit = rows * 10; // grid is 10 tiles wide
   const candidates = [
     ...custom.map((c) => ({ ...c, custom: true })),
-    ...top.filter((s) => !blocked.has(s.url) && !customUrls.has(s.url)),
+    ...top.filter((s) => !blocked.has(s.url) && !customByUrl.has(s.url)),
   ];
 
-  const slots = computeSlots(candidates, data.pinned || {}, data.order || [], limit);
+  // Pins: one URL per slot, and every Top Sites pin carries a snapshot (title +
+  // favicon) frozen when it was pinned. Pins from before 0.3.3 have none yet —
+  // take it from Top Sites once, widening to Firefox's max of 100 if the URL
+  // has rotated out of the usual 50. A null icon marks "looked, none found".
+  let pinsChanged = false;
+  const pinned = onePinPerSlot(data.pinned, new Set(candidates.map((c) => c.url)));
+  if (Object.keys(pinned).length !== Object.keys(data.pinned || {}).length) {
+    data.pinned = pinned;
+    pinsChanged = true;
+  }
+  const meta = {};
+  for (const [u, m] of Object.entries(data.pinnedMeta || {})) {
+    if (u in pinned && !customByUrl.has(u)) meta[u] = m;
+  }
+  if (Object.keys(meta).length !== Object.keys(data.pinnedMeta || {}).length) pinsChanged = true;
+  const unsnapped = Object.keys(pinned).filter(
+    (u) => !customByUrl.has(u) && !(meta[u] && "icon" in meta[u])
+  );
+  if (unsnapped.length) {
+    let pool = top;
+    if (unsnapped.some((u) => !top.some((s) => s.url === u))) {
+      try {
+        pool = await browser.topSites.get({ includeFavicon: true, limit: 100 });
+      } catch (e) {
+        /* keep the 50 we have */
+      }
+    }
+    const poolByUrl = new Map(pool.map((s) => [s.url, s]));
+    const iconBySite = new Map();
+    for (const s of pool) {
+      if (s.favicon && !iconBySite.has(siteKey(s.url))) iconBySite.set(siteKey(s.url), s.favicon);
+    }
+    for (const u of unsnapped) {
+      const s = poolByUrl.get(u);
+      meta[u] = {
+        title: (meta[u] && meta[u].title) || (s && s.title) || hostOf(u),
+        icon: (s && s.favicon) || iconBySite.get(siteKey(u)) || null,
+      };
+    }
+    pinsChanged = true;
+  }
+  if (pinsChanged) data.pinnedMeta = meta;
+  if (iconsChanged || pinsChanged) persistShortcuts(data).catch(() => {});
+
+  const pinnedTile = (url) => {
+    if (customByUrl.has(url)) return { ...customByUrl.get(url), custom: true };
+    const m = meta[url] || {};
+    return { url, title: m.title || hostOf(url), favicon: m.icon || null };
+  };
+  const slots = computeSlots(candidates, pinned, data.order || [], limit, pinnedTile);
   currentSlots = slots;
   let lastFilled = -1;
   slots.forEach((s, i) => { if (s) lastFilled = i; });

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.3 — 2026-10-14
+
+### Fixed
+- **Pinned shortcuts no longer disappear.** A pinned Top Sites tile was only
+  drawn while Firefox's Top Sites API still returned that exact URL among its
+  top 50. Top Sites keeps one URL per host and re-ranks by frecency, so after
+  a restart (or any history re-scoring) a pin could vanish and its slot fill
+  with another tile. Pins now render from stored data regardless of Top Sites:
+  each pinned Top Sites tile keeps a snapshot (`shortcuts.pinnedMeta`: title +
+  favicon) taken when it is pinned. Pins from older builds get theirs on first
+  render, from the normal list or a one-time wider (100) Top Sites lookup.
+- **One URL per pinned slot.** Pinning clears any other pin on that slot, and
+  older stacked pins (several URLs saved on one slot) are reduced to the one
+  that was on screen, else the most recently pinned.
+- **No drifted duplicates.** An unpinned Top Sites tile for the same site
+  (host + port, `www.` ignored) as a pinned tile is hidden.
+- **Pinned tiles are frozen.** The ✎ edit button is disabled on a pinned custom
+  tile (like ×); unpin to edit. A pinned tile's title/icon no longer follow
+  Top Sites changes.
+- **Pins keep their row and column at every window width.** Narrow windows
+  (≤ 900px) shrink the tiles instead of reflowing the grid to 5 columns.
+
 ## 0.3.2 — 2026-09-05
 
 ### Published

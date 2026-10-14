@@ -22,7 +22,8 @@ settings = { clock, clockSeconds, hour24, search, engine,
              darkness, blur, showMeta, shortcuts, shortcutRows,
              historyMax, pollSeconds, maxDimension, jpegQuality }   // last 4 forwarded to the helper via set_config
 shortcuts = { custom: [{ title, url, icon?, iconManual? }], blocked: [url, ...],
-              pinned: { "<url>": <slotIndex> },   // locked tiles, set only by the 📌 button
+              pinned: { "<url>": <slotIndex> },   // locked tiles, set only by the 📌 button; ONE url per slot
+              pinnedMeta: { "<url>": { title, icon /* data: URL or null */ } },  // frozen snapshot of a pinned Top Sites tile
               order:  [url, ...] }                // drag arrangement of the UNPINNED tiles
 ```
 
@@ -32,7 +33,9 @@ that clears `storage.local`. `reconcileSyncedStorage()` runs on startup in both
 `newtab.js` and `background.js` and copies any synced key that `storage.local`
 lacks. `storage.local` stays the working copy and wins when both exist (no live
 multi-device merge). `data:` icons are stripped from the synced `shortcuts`
-copy (quota); `current` is never synced. Options page has Export/Import JSON.
+copy — `custom[]` and `pinnedMeta` — (quota; `shortcutsForSync` exists in both
+`newtab.js` and `options.js`, keep them identical); `current` is never synced.
+Options page has Export/Import JSON.
 
 **Tile icons.** Top Sites entries carry `favicon` from the API. Custom tiles
 get `icon` — `iconForCustom()` reuses a Top Sites favicon for the same host,
@@ -43,16 +46,33 @@ optional **Icon URL**; a manual value sets `iconManual` and is never
 auto-overwritten. Editing a shortcut's URL migrates its `pinned`/`order` refs.
 
 Shortcuts grid: candidates = `custom` tiles then
-`browser.topSites.get({includeFavicon:true})` minus `blocked`. `computeSlots()`
-first **locks** each `pinned` url to its exact slot index, then fills the
-remaining slots with the other candidates ordered by `order` (drag arrangement)
-then natural order. Rendered through the last filled slot; interior gaps are
-drop targets. Grid is fixed 10 wide; `shortcutRows` 1-4 (default 3).
+`browser.topSites.get({includeFavicon:true, limit:50})` minus `blocked`.
+`computeSlots()` first **locks** each `pinned` url to its exact slot index,
+then fills the remaining slots with the other candidates ordered by `order`
+(drag arrangement) then natural order. Rendered through the last filled slot;
+interior gaps are drop targets. Grid is fixed 10 wide at every window width
+(narrow windows shrink tiles, never reflow) so slot index = row/column;
+`shortcutRows` 1-4 (default 3).
+
+**Pins never depend on Top Sites.** Top Sites returns one URL per host
+(the highest-frecency page) from the top 50, and Firefox re-scores history over
+time (a restart can flag nearly all of it for recalculation), so a pinned URL
+can stop being returned at any moment. A pinned tile is therefore built by
+`pinnedTile(url)` from its `custom` entry or its frozen `pinnedMeta` snapshot —
+never looked up in this render's Top Sites. Rules:
+- `pinAt()` snapshots `{title, icon}` for a Top Sites tile and removes any other
+  pin on that slot. `unpin()` deletes the snapshot.
+- `onePinPerSlot()` collapses legacy stacked pins (keep the one on screen, else
+  the most recent). Pins lacking a snapshot get one once in `renderShortcuts()`
+  (from the 50, or one `limit:100` lookup; `icon:null` = looked, none found).
+  Snapshots are never refreshed from Top Sites afterwards.
+- Unpinned Top Sites candidates with the same `siteKey()` (host+port, no
+  `www.`) as a placed pin are dropped (no drifted duplicate of a pinned site).
 
 Pin vs. drag are independent:
 - **📌 button** — pin/unpin. A pinned tile is `draggable=false`, its remove (×)
-  is `disabled`, its slot rejects drops, and the 📌 shows only on hover (the
-  `.face` ring is the persistent pinned marker).
+  and edit (✎) are `disabled`, its slot rejects drops, and the 📌 shows only on
+  hover (the `.face` ring is the persistent pinned marker).
 - **drag** — `reorderTo()` moves an unpinned tile among the other unpinned
   tiles and writes `data.order`. It never changes pin state; pinned slots are
   not valid drop targets.
